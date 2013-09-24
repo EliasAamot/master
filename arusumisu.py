@@ -6,7 +6,7 @@ Created on Fri Aug 30 14:12:49 2013
 """
 from collections import defaultdict
 from operator import itemgetter
-from methods import *
+from url_fetch import *
 
 PUBMED_SIZE = 23000000
 CUTOFF_RATE = 1.0

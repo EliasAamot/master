@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Sep  3 18:12:23 2013
+Methods for gathering medline papers based keywords or ids.
 
 @author: elias
 """
@@ -8,10 +8,12 @@ from regex import *
 import urllib2 as urllib
 from Bio import Entrez
 
-MAX_CAP = 25000
+MAXCAP = 25000
+BASE_URL = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+MAXDATE = "1985/01/01"
 
 def get_count_for_keyword(keyword):
-    """
+    xml = None
     path = 'Data/'+keyword+'.txt'
     if " " in keyword:
         keyword = '+'.join(keyword.split())
@@ -19,18 +21,17 @@ def get_count_for_keyword(keyword):
     try: 
         with open(path, 'r') as file:
             xml = file.read()
-            return find_count(xml)
     except IOError:
-        """
-    Entrez.email = "eliasaa@stud.ntnu.no"
-    handle = Entrez.esearch(db="pubmed", retmax=MAX_CAP, term=keyword)
-    record = Entrez.read(handle)
-#        with open(path, 'w') as file:
-#            file.write(record)
-    return int(record["Count"])
+        print "Downloading " + keyword
+        url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"[title]&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
+        response = urllib.urlopen(url)
+        xml = response.read()
+        with open(path, 'w') as file:
+            file.write(xml)
+    return find_count(xml)
         
 def get_ids_for_keyword(keyword):
-    """
+    xml = None
     if " " in keyword:
         keyword = '+'.join(keyword.split())
     keyword = path_normalize(keyword)
@@ -38,15 +39,14 @@ def get_ids_for_keyword(keyword):
     try: 
         with open(path, 'r') as file:
             xml = file.read()
-            return find_ids(xml)
     except IOError:
-        """
-    Entrez.email = "eliasaa@stud.ntnu.no"
-    handle = Entrez.esearch(db="pubmed", retmax=MAX_CAP, term=keyword)
-    record = Entrez.read(handle)
-#        with open(path, 'w') as file:
-#            file.write(record)
-    return record["IdList"]
+        print "Downloading " + keyword
+        url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"[title]&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
+        response = urllib.urlopen(url)
+        xml = response.read()
+        with open(path, 'w') as file:
+            file.write(xml)
+    return find_ids(xml)
 
 def get_title_for_id(theid):
     path = 'Data/'+theid+'.txt'
@@ -55,8 +55,9 @@ def get_title_for_id(theid):
             xml = file.read()
             return find_headline(xml)
     except IOError:
+        print "Downloading " + str(theid)
         Entrez.email = "eliasaa@stud.ntnu.no"
-        handle = Entrez.efetch(db="pubmed", id=theid, retmode="xml")
+        handle = Entrez.efetch(db="pubmed", id=theid, retmode="xml", maxdate=MAXDATE)
         xml = handle.read()
         with open(path, 'w') as file:
             file.write(xml)
@@ -69,8 +70,9 @@ def get_abstract_for_id(theid):
             xml = file.read()
             return find_abstract_texts(xml)
     except IOError:
+        print "Downloading " + str(theid)
         Entrez.email = "eliasaa@stud.ntnu.no"
-        handle = Entrez.efetch(db="pubmed", id=theid, retmode="xml")
+        handle = Entrez.efetch(db="pubmed", id=theid, retmode="xml", maxdate=MAXDATE)
         xml = handle.read()
         with open(path, 'w') as file:
             file.write(xml)
