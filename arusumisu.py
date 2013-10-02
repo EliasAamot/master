@@ -31,7 +31,7 @@ class Arusumisu:
             b_titles = self.find_titles_for_keywords([b])            
             title_words = set()
             for title in b_titles:
-                words = title.split().strip()
+                words = title.split()
                 words = [normalize(word) for word in words]
                 title_words = title_words.union(words)
             for word in title_words:
