@@ -6,8 +6,8 @@ Created on Wed Sep  4 11:27:25 2013
 """
 import nlp
 from url_fetch import *
-from collections import defaultdict
 from operator import itemgetter
+import sortdict
 
 #PUBMED_SIZE = 23000000
 PUBMED_SIZE = 5000000 #1985 size
@@ -27,22 +27,21 @@ class Sheshou:
         cooc_dict = self.build_coocurrence_dictionary(nps)
         print "Identifying B-terms..."
         b_terms = self.find_b_terms(cooc_dict)
+        print b_terms
         print "Fetching C-terms from B-terms..."
-        c_terms = defaultdict(int)
+        c_terms = sortdict.SortDict()
         for b in b_terms:
             b_abstracts = self.find_abstracts_for_keywords([b[0]])  
             nps = set()
             for abstract in b_abstracts:
                 nps = nps.union(nlp.find_np_chunks(abstract))
             for np in nps:
-                c_terms[np] += 1
+                c_terms[nfp] += 1
         print "\n\nResults:"
-        result_list = []
-        for c_term in c_terms.iterkeys():
-            result_list.append( (c_term, c_terms[c_term]) )
-        result_list = sorted(result_list, key=itemgetter(1))
-        for key, score in result_list[-25:]:
-            print key, ":", score
+        for key in c_terms[-25:]:
+            print key
+        #for key, score in result_list[-25:]:
+         #   print key, ":", score
             
     def find_abstracts_for_keywords(self, keywords):
         # Find unique IDs for the papers with the keywords
@@ -59,18 +58,22 @@ class Sheshou:
         return titles
         
     def build_coocurrence_dictionary(self, nps):
-        cooc = defaultdict(int)
+        cooc = sortdict.SortDict()
         for np in nps:
             cooc[np] += 1
         return cooc
 
-    def find_b_terms(self, cooc):        
+    def find_b_terms(self, cooc):   
+        potential_b_terms = cooc[:]        
+        return [b for b in potential_b_terms if self.is_statistically_significant(b, cooc)]
+        """
         b_terms = list()
         for b_term in cooc.iterkeys():
             if self.is_statistically_significant(b_term, cooc):
                 b_terms.append( (b_term, cooc[b_term]) )
         b_terms = sorted(b_terms, key=itemgetter(1))
         return b_terms
+        """
         
     def is_statistically_significant(self, term, cooc):
         # See if frequency is larger than frequency in pubmd

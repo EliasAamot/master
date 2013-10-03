@@ -14,10 +14,10 @@ MAXDATE = "1985/01/01"
 
 def get_count_for_keyword(keyword):
     xml = None
-    path = 'Data/'+keyword+'.txt'
     if " " in keyword:
         keyword = '+'.join(keyword.split())
     keyword = path_normalize(keyword)
+    path = 'Data/'+keyword+'.txt'
     try: 
         with open(path, 'r') as file:
             xml = file.read()
