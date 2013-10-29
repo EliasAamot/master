@@ -9,7 +9,9 @@ from operator import itemgetter
 
 class SortDict():
     """
-        A class for doing stuff.
+        SortDict is a wrapper class for dict which contains methods that can be useful when using a dict to count things, and collect the results in order sorted by the number of occurrences.
+        
+        The most useful improvement over standard python dicts is the __getslice__ function.
     """
     
     def __init__(self):
@@ -25,18 +27,21 @@ class SortDict():
         return key in self.dict
         
     def __getslice__(self, start, stop):
+        """
+            Extracts the (start, stop) most common keys, sorted by the number of counts.
+        """
         tuples = [(key, self.dict[key])for key in self.dict.iterkeys()]
         tuples = sorted(tuples, key=itemgetter(1), reverse=True)[start:stop]
-        return [key for key, value in tuples]
-
-    def get_sorted(self, get_values=False):
-        start = 0; stop = len(self.dict.keys())
-        tuples = [(key, self.dict[key])for key in self.dict.iterkeys()]
-        tuples = sorted(tuples, key=itemgetter(1), reverse=True)[start:stop]
-        if get_values:
-            return tuples
-        else:
-            return [key for key, value in tuples]        
+        return [key for key, value in tuples]  
         
     def iterkeys(self):
         return self.dict.iterkeys()
+    
+    def keys(self):
+        return self.dict.keys()
+        
+    def itervalues(self):
+        return self.dict.itervalues()
+    
+    def values(self):
+        return self.dict.values()
