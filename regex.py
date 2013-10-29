@@ -1,14 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Sep  2 14:09:48 2013
+Methods for regular expression manipulation of strings.
 
 @author: Elias
 """
 import re
 
+def has_any_content(xml):
+    pattern = re.compile("(<PubmedArticleSet>)(.*?)(</PubmedArticleSet>)", re.DOTALL)
+    match = pattern.search(xml)
+    return match.group(2).strip() != ""
+
 def find_count(xml):
     match = re.search("(<Count>)(.*?)(</Count>)", xml)
-    return int(match.group(2))
+    if match == None:
+        return 0
+    else:
+        return int(match.group(2))
 
 def find_headline(xml):
     match = re.search("(<ArticleTitle>)(.*?)(</ArticleTitle>)", xml)        
@@ -32,3 +40,10 @@ def path_normalize(word):
     word = word.lower()
     word = re.sub("[^a-z+]", "", word)
     return word
+    
+def np_normalize(np):
+    np = np.lower().strip()
+    np = re.sub("[^ a-z+]", "", np)
+    np = re.sub(" [ ]+", " ", np)
+    np= np.strip()
+    return np

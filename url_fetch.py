@@ -8,9 +8,9 @@ from regex import *
 import urllib2 as urllib
 from Bio import Entrez
 
-MAXCAP = 25000
+MAXCAP = 250000
 BASE_URL = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
-MAXDATE = "1985/01/01"
+MAXDATE = "2014/01/01"
 
 def get_count_for_keyword(keyword):
     xml = None
@@ -23,7 +23,7 @@ def get_count_for_keyword(keyword):
             xml = file.read()
     except IOError:
         print "Downloading " + keyword
-        url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"[title]&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
+        url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
         response = urllib.urlopen(url)
         xml = response.read()
         with open(path, 'w') as file:
@@ -41,7 +41,7 @@ def get_ids_for_keyword(keyword):
             xml = file.read()
     except IOError:
         print "Downloading " + keyword
-        url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"[title]&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
+        url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
         response = urllib.urlopen(url)
         xml = response.read()
         with open(path, 'w') as file:
@@ -74,7 +74,10 @@ def get_abstract_for_id(theid):
         Entrez.email = "eliasaa@stud.ntnu.no"
         handle = Entrez.efetch(db="pubmed", id=theid, retmode="xml", maxdate=MAXDATE)
         xml = handle.read()
-        with open(path, 'w') as file:
-            file.write(xml)
-        return find_abstract_texts(xml)
+        if has_any_content(xml):
+            with open(path, 'w') as file:
+                file.write(xml)
+            return find_abstract_texts(xml)
+        else:
+            return None
     

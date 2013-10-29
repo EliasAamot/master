@@ -8,6 +8,9 @@ from collections import defaultdict
 from operator import itemgetter
 
 class SortDict():
+    """
+        A class for doing stuff.
+    """
     
     def __init__(self):
         self.dict = defaultdict(int)
@@ -23,8 +26,17 @@ class SortDict():
         
     def __getslice__(self, start, stop):
         tuples = [(key, self.dict[key])for key in self.dict.iterkeys()]
-        tuples = sorted(tuples, key=itemgetter(1))[start:stop]
+        tuples = sorted(tuples, key=itemgetter(1), reverse=True)[start:stop]
         return [key for key, value in tuples]
+
+    def get_sorted(self, get_values=False):
+        start = 0; stop = len(self.dict.keys())
+        tuples = [(key, self.dict[key])for key in self.dict.iterkeys()]
+        tuples = sorted(tuples, key=itemgetter(1), reverse=True)[start:stop]
+        if get_values:
+            return tuples
+        else:
+            return [key for key, value in tuples]        
         
     def iterkeys(self):
         return self.dict.iterkeys()
