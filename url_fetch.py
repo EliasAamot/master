@@ -11,6 +11,19 @@ from Bio import Entrez
 MAXCAP = 250000
 BASE_URL = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 MAXDATE = "2014/01/01"
+MAX_PATH_LENGTH = 255
+FOLDER_NAME_LENGTH = 5 # len("Data/")
+
+def fix_length(path):
+    """
+        Sometimes the path produced for a keyword can become too long for the OS to handle, especially in the cases where the keyword is a complex NP. To handle these situations, I assume that the last 255 characters (including '.txt') is a sufficiently unique indicator of the keyword, even if this might not be the case.
+    """
+    if len(path) > MAX_PATH_LENGTH+FOLDER_NAME_LENGTH:
+        folder, post_folder_path = path.split("/")
+        post_folder_path = post_folder_path[-MAX_PATH_LENGTH:]
+        path = folder+"/"+post_folder_path
+    return path
+    
 
 def get_count_for_keyword(keyword):
     xml = None
@@ -18,6 +31,7 @@ def get_count_for_keyword(keyword):
         keyword = '+'.join(keyword.split())
     keyword = path_normalize(keyword)
     path = 'Data/'+keyword+'.txt'
+    path = fix_length(path)
     try: 
         with open(path, 'r') as file:
             xml = file.read()
@@ -36,6 +50,7 @@ def get_ids_for_keyword(keyword):
         keyword = '+'.join(keyword.split())
     keyword = path_normalize(keyword)
     path = 'Data/'+keyword+'.txt'
+    path = fix_length(path)
     try: 
         with open(path, 'r') as file:
             xml = file.read()
