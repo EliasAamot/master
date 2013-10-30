@@ -11,11 +11,17 @@ tfidfs = sortdict.SortDict()
 
 with open('results.txt', 'r') as file:
     for line in file:
-        keyword, tf = line.strip().split(':')
-        df = url_fetch.get_count_for_keyword(keyword)
-        idf = math.log((float(MEDLINE_SIZE)+1) / (float(df)+1), 2)
-        tfidfs[keyword] = float(tf)*idf
+        try:
+            keyword, tf = line.strip().split(':')
+            df = url_fetch.get_count_for_keyword(keyword)
+            if df < 2:
+                tfidfs[keyword] = "n/a"
+            else:
+                idf = math.log((float(MEDLINE_SIZE)) / (float(df), 2))
+                tfidfs[keyword] = float(tf)*idf
+        except:
+            print "Failed to download count index for " + keyword + ", probably due to timeout."
 
 with open('tfidfs.txt', 'w') as file:
     for key in tfidfs[:]:
-        file.write(key + ":" + tfidfs[key] + "\n")
+        file.write(key + ":" + str(tfidfs[key]) + "\n")
