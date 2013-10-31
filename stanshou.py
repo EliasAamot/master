@@ -57,7 +57,7 @@ def calcualte_tdidf(term_freqs):
     for keyword in term_freqs[:]:
         doc_freqs[keyword] = url_fetch.get_count_for_keyword(keyword)
     # We estimate the document collection size based on the frequncy of the most common NP. 
-    collection_size = max(doc_freqs.values() * 2)
+    collection_size = max(doc_freqs.values())*2
     # Finally we have the information required to calculate TD-IDF
     tfidfs = sortdict.SortDict()
     for keyword in term_freqs[:]:
