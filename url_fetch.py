@@ -37,7 +37,13 @@ def get_count_for_keyword(keyword):
             xml = file.read()
     except IOError:
         print "Downloading " + keyword
-        url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
+        fetched = False
+        while not fetched:
+            try:
+                url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
+                fetched = True
+            except Exception as e:
+                print "Exception " + str(e) + " occured while downloading paper " + keyword + ". Trying again."
         response = urllib.urlopen(url)
         xml = response.read()
         with open(path, 'w') as file:
@@ -56,7 +62,13 @@ def get_ids_for_keyword(keyword):
             xml = file.read()
     except IOError:
         print "Downloading " + keyword
-        url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
+        fetched = False
+        while not fetched:
+            try:
+                url = BASE_URL + "esearch.fcgi?db=pubmed&term="+keyword+"&retmax="+str(MAXCAP)+"&maxdate="+MAXDATE
+                fetched = True
+            except Exception as e:
+                print "Exception " + str(e) + " occured while downloading paper " + keyword + ". Trying again."
         response = urllib.urlopen(url)
         xml = response.read()
         with open(path, 'w') as file:
@@ -72,7 +84,13 @@ def get_title_for_id(theid):
     except IOError:
         print "Downloading " + str(theid)
         Entrez.email = "eliasaa@stud.ntnu.no"
-        handle = Entrez.efetch(db="pubmed", id=theid, retmode="xml", maxdate=MAXDATE)
+        fetched = False
+        while not fetched:
+            try:
+                handle = Entrez.efetch(db="pubmed", id=theid, retmode="xml", maxdate=MAXDATE)
+                fetched = True
+            except Exception as e:
+                print "Exception " + str(e) + " occured while downloading paper " + theid + ". Trying again."
         xml = handle.read()
         with open(path, 'w') as file:
             file.write(xml)
@@ -87,7 +105,13 @@ def get_abstract_for_id(theid):
     except IOError:
         print "Downloading " + str(theid)
         Entrez.email = "eliasaa@stud.ntnu.no"
-        handle = Entrez.efetch(db="pubmed", id=theid, retmode="xml", maxdate=MAXDATE)
+        fetched = False
+        while not fetched:
+            try:
+                handle = Entrez.efetch(db="pubmed", id=theid, retmode="xml", maxdate=MAXDATE)
+                fetched = True
+            except Exception as e:
+                print "Exception " + str(e) + " occured while downloading paper " + theid + ". Trying again."
         xml = handle.read()
         if has_any_content(xml):
             with open(path, 'w') as file:

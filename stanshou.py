@@ -55,14 +55,7 @@ def get_ids(keywords):
 def calcualte_tdidf(term_freqs):
     doc_freqs = dict()
     for keyword in term_freqs[:]:
-        # Because of connection issues, fetches tend to timeout, so I added this fail-proof system.
-        df_fetched = False
-        while not df_fetched:
-            try:
-                doc_freqs[keyword] = url_fetch.get_count_for_keyword(keyword)
-                df_fetched = True
-            except:
-                print "An error occured while trying to download index for NP " + keyword + ". Trying again."
+        doc_freqs[keyword] = url_fetch.get_count_for_keyword(keyword)
     # We estimate the document collection size based on the frequncy of the most common NP. 
     collection_size = max(doc_freqs.values() * 2)
     # Finally we have the information required to calculate TD-IDF
