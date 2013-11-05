@@ -16,8 +16,7 @@ class StoreParser():
     def __init__(self):
         self.corenlp = StanfordCoreNLP()
 
-    def parse_abstract(id):
-        corenlp = StanfordCoreNLP()
+    def parse_abstract(self, id):
         count_dict = sortdict.SortDict()
         path = "Data/" + id + ".nps"
         
@@ -33,7 +32,7 @@ class StoreParser():
             # Can happen due to server overload
             if abstract == None:
                 return count_dict
-            parse = corenlp.parse(abstract)
+            parse = self.corenlp.parse(abstract)
             document = json.loads(parse)
             # Extract all the nps from the parse trees
             for sentence in document['sentences']:
