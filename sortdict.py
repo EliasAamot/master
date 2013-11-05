@@ -45,3 +45,7 @@ class SortDict():
     
     def values(self):
         return self.dict.values()
+        
+    def join(self, other_dict):
+        for key in other_dict.keys():
+            self.dict[key] += other_dict[key]

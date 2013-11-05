@@ -1,90 +1,52 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Nov  5 11:20:46 2013
+An Arrowsmith-like LBKD system utilizing the Stanford Core NLP Toolkit and the Medeley database.
 
 @author: elias
 """
+import nlp, medeley_fetch, sortdict
+import math
 
-#import urllib2, urllib
-#import json
-import medeley_fetch
 
-for id in medeley_fetch.get_ids_for_keyword("ocean acidification"):
-    medeley_fetch.get_abstract_for_id(id)
-
-print medeley_fetch.get_abstract_for_id("b61399bb-049d-30c9-93d8-62bd3731bb2e")
-# -*- coding: utf-8 -*-
-"""
-An Arrowsmith-like LBKD system utilizing the Stanford Core NLP Toolkit.
-
-@author: elias
-"""
-from corenlp import StanfordCoreNLP
-from nltk.tree import Tree
-import url_fetch
-import treemanipulation
-import sortdict
-import json, math
-
-def query(keywords):
+def query(keyword):
     print "Selecting papers containing the A-keywords..."
-    ids = get_ids(keywords)
+    ids = medeley_fetch.get_ids_for_keyword(keyword)
     print "Gathering NPs from A abstracts..."
     count_dict = parse_abstracts(ids)
     print "Calculating TF-IDFs for potential B terms..."
     tfidfs = calcualte_tdidf(count_dict)
     print "Filtering potential B terms..."
-    b_term_candidates = get_k_best_and_filter(tfidfs, 50, keywords)
-    print "Please choose B-terms (write numbers seperated by comma, no spaces)..."    
-    b_terms = choose_b_terms(b_term_candidates)
-    print "Extracting C-term candidates from B-keywords..."
-    b_dict = dict()
-    for b_term in b_terms:
-        ids = get_ids([b_term])
-        count_dict = parse_abstracts(ids)
-        tfidfs = calcualte_tdidf(count_dict)
-        b_dict[b_term] = tfidfs[:25]
-    print "Ranking C-term candidates..."
-    c_terms = rank(b_dict)
-    print "Printing final results..."
-    for c_term in c_terms[:40]:
-        print c_term
+    b_term_candidates = get_k_best_and_filter(tfidfs, 50, [keyword])
+    for best in b_term_candidates:
+        print best
+    
+#    print "Please choose B-terms (write numbers seperated by comma, no spaces)..."    
+#    b_terms = choose_b_terms(b_term_candidates)
+#    print "Extracting C-term candidates from B-keywords..."
+#    b_dict = dict()
+#    for b_term in b_terms:
+#        ids = get_ids([b_term])
+#        count_dict = parse_abstracts(ids)
+#        tfidfs = calcualte_tdidf(count_dict)
+#        b_dict[b_term] = tfidfs[:25]
+#    print "Ranking C-term candidates..."
+#    c_terms = rank(b_dict)
+#    print "Printing final results..."
+#    for c_term in c_terms[:40]:
+#        print c_term
       
 def parse_abstracts(ids):
-    corenlp = StanfordCoreNLP()
-    count_dict = sortdict.SortDict()
-    
+    parser = nlp.StoreParser()
+    all_counts = sortdict.SortDict()
     for i, id in enumerate(ids):
-        print i
-        if i > 99:
-            break
-        # Parse the document
-        abstracts = url_fetch.get_abstract_for_id(id)
-        for abstract in abstracts:
-            parse = corenlp.parse(abstract)
-            document = json.loads(parse)
-            # Extract all the nps from the parse trees
-            for sentence in document['sentences']:
-                parse_tree = sentence['parsetree']
-                nltk_tree = Tree(parse_tree)
-                
-                nps = treemanipulation.get_all_np_variations(nltk_tree)
-                for np in nps:      
-                    count_dict[np] += 1
-    return count_dict
-            
-def get_ids(keywords):
-    # Find unique IDs for the papers with the keywords
-    all_ids = set()
-    for keyword in keywords:
-        ids = url_fetch.get_ids_for_keyword(keyword)
-        all_ids = all_ids.union(ids)
-    return all_ids
+        print i, "/", len(ids)
+        all_counts.join(parser.parse_abstract(id))
+    return all_counts
         
 def calcualte_tdidf(term_freqs):
     doc_freqs = dict()
     for keyword in term_freqs[:]:
-        doc_freqs[keyword] = url_fetch.get_count_for_keyword(keyword)
+        doc_freqs[keyword] = medeley_fetch.get_count_for_keyword(keyword)
     # We estimate the document collection size based on the frequncy of the most common NP. 
     collection_size = max(doc_freqs.values())*2
     # Finally we have the information required to calculate TD-IDF
@@ -133,4 +95,4 @@ def rank(b_term_dict):
     return c_term_dict
 
 if __name__=="__main__":
-    query(["raynaud","raynauds","raynaud's"])
+    query("ocean acidification")
