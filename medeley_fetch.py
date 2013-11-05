@@ -61,7 +61,7 @@ def get_ids_for_keyword(keyword):
             except Exception as e:
                 if '429' in str(e):
                     print "HTTP Error 429: Too many requests. Try again in one hour or more."
-                    exit()
+                    return None
                 else:
                     print "Exception " + str(e) + " occured while downloading paper " + keyword + ". Trying again."
         with open(path, 'w') as file:
@@ -86,7 +86,7 @@ def get_abstract_for_id(theid):
             except Exception as e:
                 if '429' in str(e):
                     print "HTTP Error 429: Too many requests. Try again in one hour or more."
-                    exit()
+                    return None
                 else:
                     print "Exception " + str(e) + " occured while downloading paper " + theid + ". Trying again."
     with open(path, 'w') as file:
