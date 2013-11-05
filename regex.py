@@ -37,6 +37,7 @@ def normalize(word):
     return word
     
 def path_normalize(word):
+    word = '+'.join(word.split())
     word = word.lower()
     word = re.sub("[^a-z+]", "", word)
     return word
