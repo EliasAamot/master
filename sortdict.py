@@ -48,4 +48,4 @@ class SortDict():
         
     def join(self, other_dict):
         for key in other_dict.keys():
-            self.dict[key] += other_dict[key]
+            self.dict[key] += int(other_dict[key])

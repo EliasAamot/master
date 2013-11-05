@@ -41,7 +41,8 @@ class StoreParser():
                     
                 nps = treemanipulation.get_all_np_variations(nltk_tree)
                 for np in nps:      
-                    count_dict[np] += 1
+                    if np != "":
+                        count_dict[np] += 1
             with open(path, 'w') as file:
                 for key in count_dict.iterkeys():
                     file.write(str(key) + "\t" + str(count_dict[key]) + "\n")
