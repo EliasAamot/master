@@ -12,7 +12,7 @@ import sortdict
 import json, math
 
 def query(keywords):
-    print "Storing abstracts for A-keywords..."
+    print "Selecting papers containing the A-keywords..."
     ids = get_ids(keywords)
     print "Gathering NPs from A abstracts..."
     count_dict = parse_abstracts(ids)
@@ -20,15 +20,29 @@ def query(keywords):
     tfidfs = calcualte_tdidf(count_dict)
     print "Filtering potential B terms..."
     b_term_candidates = get_k_best_and_filter(tfidfs, 50, keywords)
-        
-    for b_candidate in b_term_candidates:
-        print b_candidate
-        
+    print "Please choose B-terms (write numbers seperated by comma, no spaces)..."    
+    b_terms = choose_b_terms(b_term_candidates)
+    print "Extracting C-term candidates from B-keywords..."
+    b_dict = dict()
+    for b_term in b_terms:
+        ids = get_ids([b_term])
+        count_dict = parse_abstracts(ids)
+        tfidfs = calcualte_tdidf(count_dict)
+        b_dict[b_term] = tfidfs[:25]
+    print "Ranking C-term candidates..."
+    c_terms = rank(b_dict)
+    print "Printing final results..."
+    for c_term in c_terms[:40]:
+        print c_term
+      
 def parse_abstracts(ids):
     corenlp = StanfordCoreNLP()
     count_dict = sortdict.SortDict()
     
-    for id in ids:
+    for i, id in enumerate(ids):
+        print i
+        if i > 99:
+            break
         # Parse the document
         abstracts = url_fetch.get_abstract_for_id(id)
         for abstract in abstracts:
@@ -88,6 +102,20 @@ def get_k_best_and_filter(scores, k, filter_terms):
             i += 1
             chosen.append(check)
     return chosen
+    
+def choose_b_terms(candidates):
+    for i, b_candidate in enumerate(candidates):
+        print str(i) + ": " + b_candidate
+    b_term_input = raw_input()
+    b_term_input = b_term_input.split(",")
+    return [candidates[int(b_index)] for b_index in b_term_input]
+
+def rank(b_term_dict):
+    c_term_dict = sortdict.SortDict()
+    for b_term in b_term_dict:
+        for c_candidate in b_term_dict[b_term]:
+            c_term_dict[c_candidate] += 1
+    return c_term_dict
 
 if __name__=="__main__":
     query(["raynaud","raynauds","raynaud's"])
