@@ -6,7 +6,7 @@ Created on Tue Nov  5 15:04:58 2013
 """
 from corenlp import StanfordCoreNLP
 from nltk.tree import Tree
-import sortdict
+from collections import defaultdict
 import treemanipulation
 import medeley_fetch
 import json
@@ -17,17 +17,22 @@ class StoreParser():
     def __init__(self):
         self.corenlp = StanfordCoreNLP()
         self.treemanipulator = TreeManipulator()
+        self.stemmer = Stemmer()
 
     def parse_abstract(self, id):
-        count_dict = sortdict.SortDict()
+        count_dict = dict()
         path = "Data/" + id + ".nps"
-        
         try:
             with open(path, 'r') as file:
                 for line in file:
                     line = line.strip()
-                    np, count = line.split("\t")
-                    count_dict[np] = count
+                    split = line.split("\t")
+                    stemmed_np = split[0]
+                    count = split[1]
+                    unstemmed = dict()
+                    for i in xrange(2,2,len(split)):
+                        unstemmed[split[i]] = int(split[i+1])
+                    count_dict[stemmed_np] = [int(count), unstemmed]
         except IOError:
             print "Parsing " + str(id)
             abstract = medeley_fetch.get_abstract_for_id(id)
@@ -42,18 +47,24 @@ class StoreParser():
                 nltk_tree = Tree(parse_tree)
                     
                 nps = treemanipulation.get_all_np_variations(nltk_tree)
-                for np in nps:      
-                    if np != "":
-                        count_dict[np] += 1
+                for original_np in nps:      
+                    if original_np != "":
+                        stemmed_np = self.stemmer.stem_string(original_np)
+                        if stemmed_np in count_dict.keys():
+                            count_dict[stemmed_np][0] += 1
+                            count_dict[stemmed_np][1][original_np] += 1
+                        else:
+                            count_dict[stemmed_np] = [1, defaultdict(int)]
+                            count_dict[stemmed_np][1][original_np] = 1
             with open(path, 'w') as file:
                 for key in count_dict.iterkeys():
-                    file.write(str(key) + "\t" + str(count_dict[key]) + "\n")
+                    file.write(str(key) + "\t" + str(count_dict[key][0]) + "\t")
+                    for original_np in count_dict[key][1].iterkeys():
+                        file.write(str(original_np) + "\t" + str(count_dict[key][1][original_np]) + "\t")
+                    file.write("\n")
         return count_dict
+        
 class TreeManipulator:
-    
-    def __init__(self):
-        self.stemmer = Stemmer()
-    
     # Returns a list of all NP variations found in the sentece parse tree
     def get_all_np_variations(self, tree=None):
         nps = self.extract_all(tree=tree, label='NP')
@@ -78,9 +89,7 @@ class TreeManipulator:
         
     # Returns the normalized (lower-case) and stemmed string of the leaves of the tree
     def get_string(self, tree=None):
-        words = tree.leaves()
-        stemmed = self.stemmer.stem(words)
-        return regex.np_normalize(' '.join(stemmed))
+        return regex.np_normalize(' '.join(tree.leaves()))
         
 class Stemmer:
     """
@@ -91,3 +100,6 @@ class Stemmer:
         
     def stem(self, words):
         return ['be' if word.lower() in ['is', 'are', 'were', 'was'] else self.lancasterstemmer.stem(word) for word in words]
+
+    def stem_string(self, string):
+        return regex.np_normalize(' '.join(self.stem(string.split())))

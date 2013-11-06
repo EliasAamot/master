@@ -6,7 +6,7 @@ An Arrowsmith-like LBKD system utilizing the Stanford Core NLP Toolkit and the M
 """
 import nlp, medeley_fetch, sortdict
 import math
-
+from collections import defaultdict
 
 def query(keyword):
     print "Selecting papers containing the A-keywords..."
@@ -37,32 +37,49 @@ def query(keyword):
       
 def parse_abstracts(ids):
     parser = nlp.StoreParser()
-    all_counts = sortdict.SortDict()
+    all_counts = dict()
     for i, id in enumerate(ids):
         print i, "/", len(ids)
-        if i > 3460:
+        if i > 120:
             return all_counts
-        all_counts.join(parser.parse_abstract(id))
+        # Join the new counts with the total
+        counts = parser.parse_abstract(id)
+        for key in counts.iterkeys():
+            if key in all_counts.keys():
+                all_counts[key][0] += counts[key][0]
+            else:
+                all_counts[key] = [counts[key][0], defaultdict(int)]
+            for orig_key in counts[key][1].keys():
+                all_counts[key][1][orig_key] += counts[key][1][orig_key]
     return all_counts
         
 def calcualte_tdidf(term_freqs):
     doc_freqs = dict()
-    for keyword in term_freqs[:]:
-        doc_freqs[keyword] = medeley_fetch.get_count_for_keyword(keyword)
+    stem_to_full_translator = dict()
+    for keyword in term_freqs.iterkeys():
+        # For each stemmed cluster, find the most representative NP
+        max_count = 0
+        max_np = None
+        for np in term_freqs[keyword][1].iterkeys():
+            if term_freqs[keyword][1][np] > max_count:
+                max_count = term_freqs[keyword][1][np]
+                max_np = np
+        stem_to_full_translator[keyword] = max_np
+        doc_freqs[max_np] = medeley_fetch.get_count_for_keyword(max_np)
     # We estimate the document collection size based on the frequncy of the most common NP. 
     collection_size = max(doc_freqs.values())*2
     # Finally we have the information required to calculate TD-IDF
     tfidfs = sortdict.SortDict()
-    for keyword in term_freqs[:]:
+    for keyword in term_freqs.iterkeys():
         term_freq = term_freqs[keyword]
-        doc_freq = doc_freqs[keyword]
+        doc_freq = doc_freqs[stem_to_full_translator[keyword]]
         # Disregard phrases that occur less that two times; 
         # they cannot be used to connect unrelated diciplins anyway.
         if doc_freq < 2:
-            tfidfs[keyword] = 0.0
+            tfidfs[stem_to_full_translator[keyword]] = 0.0
         else:
             idf = math.log(float(collection_size) / float(doc_freq), 2)
-            tfidfs[keyword] = float(term_freq)*idf
+            tfidfs[stem_to_full_translator[keyword]] = float(term_freq)*idf
     return tfidfs
         
 def get_k_best_and_filter(scores, k, filter_terms):
