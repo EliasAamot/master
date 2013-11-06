@@ -40,6 +40,8 @@ def parse_abstracts(ids):
     all_counts = sortdict.SortDict()
     for i, id in enumerate(ids):
         print i, "/", len(ids)
+        if i > 3460:
+            return all_counts
         all_counts.join(parser.parse_abstract(id))
     return all_counts
         

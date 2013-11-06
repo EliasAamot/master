@@ -29,11 +29,31 @@ def fix_length(path):
     
 
 def get_count_for_keyword(keyword):
-    # This method could easily have been implemented in a way that does not
-    # require the program to download the id of all the papers related to a
-    # topic, but I assume that those IDs will be required sooner of later
-    # anyways, so it doesn't hurt to do more work now and less later.
-    return len(get_ids_for_keyword(keyword))
+    keyword_path = path_normalize(keyword)
+    path = 'Data/'+keyword_path+'.cnt'
+    path = fix_length(path)
+    try: 
+        with open(path, 'r') as file:
+            count = int(file.read().strip())
+    except IOError:
+        print "Downloading " + keyword
+        done = False
+        while not done:
+            try:
+                search_query = urllib2.quote("title:"+keyword) 
+                url = SEARCH_BASE_URL + search_query + AUTH
+                xml_dict = json.loads(urllib2.urlopen(url).read())
+                count = int(xml_dict['total_results'])
+                done = True
+            except Exception as e:
+                if '429' in str(e):
+                    print "HTTP Error 429: Too many requests. Try again in one hour or more."
+                    return None
+                else:
+                    print "Exception " + str(e) + " occured while downloading paper " + keyword + ". Trying again."
+        with open(path, 'w') as file:
+            file.write(str(count) + "\n")
+    return count
         
 def get_ids_for_keyword(keyword):
     keyword_path = path_normalize(keyword)
@@ -92,7 +112,13 @@ def get_abstract_for_id(theid):
     with open(path, 'w') as file:
         file.write(xml)
     xml_dict = json.loads(xml)
-    if 'abstract' in xml_dict.keys():
-        return xml_dict['abstract']
-    else:
-        return None
+    try:
+        if 'abstract' in xml_dict.keys():
+            return xml_dict['abstract']
+        else:
+            return None
+    except AttributeError:
+        print xml_dict
+
+if __name__=="__main__":
+    pass
