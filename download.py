@@ -5,7 +5,7 @@ Created on Thu Nov  7 11:58:29 2013
 @author: elias
 """
 
-import sleep, os.path
+import time, os.path
 import medeley_fetch
 import regex
 
@@ -21,4 +21,4 @@ for id in ids:
         pass
     else:
         medeley_fetch.get_abstract_for_id(id)
-        sleep(7)
+        time.sleep(7)

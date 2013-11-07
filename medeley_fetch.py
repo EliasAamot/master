@@ -100,7 +100,7 @@ def get_abstract_for_id(theid):
     except IOError:
         print "Downloading " + str(theid)
         fetched = False
-        while not fetched
+        while not fetched:
             try:
                 search_query = theid
                 url = DETAIL_BASE_URL + search_query + AUTH
