@@ -20,4 +20,4 @@ for id in ids:
         pass
     else:
         medeley_fetch.get_abstract_for_id(id)
-        sleep(7)
+        sleep(8)
