@@ -7,7 +7,6 @@ Created on Tue Nov  5 15:04:58 2013
 from corenlp import StanfordCoreNLP
 from nltk.tree import Tree
 from collections import defaultdict
-import treemanipulation
 import medeley_fetch
 import json
 import regex, nltk
@@ -30,7 +29,7 @@ class StoreParser():
                     stemmed_np = split[0]
                     count = split[1]
                     unstemmed = dict()
-                    for i in xrange(2,2,len(split)):
+                    for i in xrange(2,len(split),2):
                         unstemmed[split[i]] = int(split[i+1])
                     count_dict[stemmed_np] = [int(count), unstemmed]
         except IOError:
@@ -38,6 +37,7 @@ class StoreParser():
             abstract = medeley_fetch.get_abstract_for_id(id)
             # Can happen due to server overload
             if abstract == None:
+                print "Skipping..."
                 return count_dict
             parse = self.corenlp.parse(abstract)
             document = json.loads(parse)
@@ -46,7 +46,7 @@ class StoreParser():
                 parse_tree = sentence['parsetree']
                 nltk_tree = Tree(parse_tree)
                     
-                nps = treemanipulation.get_all_np_variations(nltk_tree)
+                nps = self.treemanipulator.get_all_np_variations(nltk_tree)
                 for original_np in nps:      
                     if original_np != "":
                         stemmed_np = self.stemmer.stem_string(original_np)
@@ -65,8 +65,12 @@ class StoreParser():
         return count_dict
         
 class TreeManipulator:
-    # Returns a list of all NP variations found in the sentece parse tree
+    """
+        A collection of methods for manipulation and extraction from NLTK trees.
+    """    
+    
     def get_all_np_variations(self, tree=None):
+        # Returns a list of all NP variations found in the sentece parse tree
         nps = self.extract_all(tree=tree, label='NP')
         all_nps = set()
         for np in nps:
@@ -75,21 +79,22 @@ class TreeManipulator:
             all_nps.add(self.get_string(self.prune_tree(np, ['DT', 'JJ'])))
         return all_nps
         
-    # Extracts all subtrees with a given label from a tree
     def extract_all(self, tree=None, label=''):
+        # Extracts all subtrees with a given label from a tree
         return [subtree for subtree in tree.subtrees() if subtree.node==label]
     
-    # Prunes away all children with one of the given labels.
     def prune_tree(self, tree=None, labels=[]):
+        # Prunes away all children with one of the given labels.
         pruned_tree = tree.copy(deep=True)
         for i, child in enumerate(pruned_tree):
             if child.node in labels:
                 pruned_tree.pop(i)
         return pruned_tree
         
-    # Returns the normalized (lower-case) and stemmed string of the leaves of the tree
     def get_string(self, tree=None):
-        return regex.np_normalize(' '.join(tree.leaves()))
+        # Returns the normalized (lower-case) and stemmed string of the leaves of the tree
+        words = [word for word in tree.leaves() if not word in ["-LRB-", "-RRB-"]]
+        return regex.np_normalize(' '.join(words))
         
 class Stemmer:
     """

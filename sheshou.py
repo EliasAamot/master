@@ -40,8 +40,6 @@ def parse_abstracts(ids):
     all_counts = dict()
     for i, id in enumerate(ids):
         print i, "/", len(ids)
-        if i > 120:
-            return all_counts
         # Join the new counts with the total
         counts = parser.parse_abstract(id)
         for key in counts.iterkeys():
@@ -71,7 +69,7 @@ def calcualte_tdidf(term_freqs):
     # Finally we have the information required to calculate TD-IDF
     tfidfs = sortdict.SortDict()
     for keyword in term_freqs.iterkeys():
-        term_freq = term_freqs[keyword]
+        term_freq = term_freqs[keyword][0]
         doc_freq = doc_freqs[stem_to_full_translator[keyword]]
         # Disregard phrases that occur less that two times; 
         # they cannot be used to connect unrelated diciplins anyway.

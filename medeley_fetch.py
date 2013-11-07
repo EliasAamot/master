@@ -43,7 +43,10 @@ def get_count_for_keyword(keyword):
                 search_query = urllib2.quote("title:"+keyword) 
                 url = SEARCH_BASE_URL + search_query + AUTH
                 xml_dict = json.loads(urllib2.urlopen(url).read())
-                count = int(xml_dict['total_results'])
+                count = xml_dict['total_results']
+                if count == None:
+                    return 0
+                count = int(count)
                 done = True
             except Exception as e:
                 if '429' in str(e):
