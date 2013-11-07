@@ -13,6 +13,7 @@ ids = medeley_fetch.get_ids_for_keyword('ocean acidification')
 ids.extend(medeley_fetch.get_ids_for_keyword('phytoplankton'))
 
 for id in ids:
+    print id
     keyword_path = regex.path_normalize(id)
     path = 'Data/'+keyword_path+'.txt'
     path = medeley_fetch.fix_length(path)
@@ -20,4 +21,4 @@ for id in ids:
         pass
     else:
         medeley_fetch.get_abstract_for_id(id)
-        sleep(8)
+        sleep(7)
