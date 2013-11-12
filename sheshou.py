@@ -16,9 +16,9 @@ def query(keyword):
     print "Calculating TF-IDFs for potential B terms..."
     tfidfs = calcualte_tdidf(count_dict)
     print "Filtering potential B terms..."
-    b_term_candidates = get_k_best_and_filter(tfidfs, 50, [keyword])
+    b_term_candidates = get_k_best_and_filter(tfidfs, 250, [word for word in keyword.split()])
     for best in b_term_candidates:
-        print best
+        print best, tfidfs[best]
     
 #    print "Please choose B-terms (write numbers seperated by comma, no spaces)..."    
 #    b_terms = choose_b_terms(b_term_candidates)
@@ -40,6 +40,8 @@ def parse_abstracts(ids):
     all_counts = dict()
     for i, id in enumerate(ids):
         print i, "/", len(ids)
+        if i > 1000:
+            break
         # Join the new counts with the total
         counts = parser.parse_abstract(id)
         for key in counts.iterkeys():
@@ -55,6 +57,9 @@ def calcualte_tdidf(term_freqs):
     doc_freqs = dict()
     stem_to_full_translator = dict()
     for keyword in term_freqs.iterkeys():
+        # Rmove all NPs that only occur once to avoid doing extra work
+        if term_freqs[keyword][0] == 1:
+            continue
         # For each stemmed cluster, find the most representative NP
         max_count = 0
         max_np = None
@@ -65,10 +70,12 @@ def calcualte_tdidf(term_freqs):
         stem_to_full_translator[keyword] = max_np
         doc_freqs[max_np] = medeley_fetch.get_count_for_keyword(max_np)
     # We estimate the document collection size based on the frequncy of the most common NP. 
-    collection_size = max(doc_freqs.values())*2
+    collection_size = max(doc_freqs.values())
     # Finally we have the information required to calculate TD-IDF
     tfidfs = sortdict.SortDict()
     for keyword in term_freqs.iterkeys():
+        if term_freqs[keyword][0] == 1:
+            continue
         term_freq = term_freqs[keyword][0]
         doc_freq = doc_freqs[stem_to_full_translator[keyword]]
         # Disregard phrases that occur less that two times; 
@@ -85,7 +92,7 @@ def get_k_best_and_filter(scores, k, filter_terms):
     chosen = list()
     i = 0
     while i < k:
-        check = sorted_keywords.pop()
+        check = sorted_keywords.pop(0)
         accept_it = True
         # Check if word is to be filtered out
         for filter_term in filter_terms:

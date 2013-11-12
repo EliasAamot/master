@@ -9,8 +9,8 @@ import time, os.path
 import medeley_fetch
 import regex
 
-ids = medeley_fetch.get_ids_for_keyword('ocean acidification')
-ids.extend(medeley_fetch.get_ids_for_keyword('phytoplankton'))
+ids = medeley_fetch.get_ids_for_keyword('ph')
+ids.extend(medeley_fetch.get_ids_for_keyword('redfield ratio'))
 
 for id in ids:
     print id
@@ -21,4 +21,4 @@ for id in ids:
         pass
     else:
         medeley_fetch.get_abstract_for_id(id)
-        time.sleep(7)
+        time.sleep(8)
