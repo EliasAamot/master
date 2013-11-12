@@ -40,7 +40,7 @@ def parse_abstracts(ids):
     all_counts = dict()
     for i, id in enumerate(ids):
         print i, "/", len(ids)
-        if i > 1000:
+        if i > 2000:
             break
         # Join the new counts with the total
         counts = parser.parse_abstract(id)

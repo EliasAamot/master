@@ -20,7 +20,7 @@ class StoreParser():
 
     def parse_abstract(self, id):
         count_dict = dict()
-        path = "Data/" + id + ".nps"
+        path = "NPs/" + id + ".nps"
         try:
             with open(path, 'r') as file:
                 for line in file:
@@ -41,6 +41,8 @@ class StoreParser():
                 return count_dict
             parse = self.corenlp.parse(abstract)
             document = json.loads(parse)
+            with open("Parses/" + id + ".json") as file:
+                file.write(parse)
             # Extract all the nps from the parse trees
             for sentence in document['sentences']:
                 parse_tree = sentence['parsetree']

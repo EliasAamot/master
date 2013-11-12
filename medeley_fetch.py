@@ -30,7 +30,7 @@ def fix_length(path):
 
 def get_count_for_keyword(keyword):
     keyword_path = path_normalize(keyword)
-    path = 'Data/'+keyword_path+'.cnt'
+    path = 'Counts/'+keyword_path+'.cnt'
     path = fix_length(path)
     try: 
         with open(path, 'r') as file:
@@ -60,7 +60,7 @@ def get_count_for_keyword(keyword):
         
 def get_ids_for_keyword(keyword):
     keyword_path = path_normalize(keyword)
-    path = 'Data/'+keyword_path+'.txt'
+    path = 'IDs/'+keyword_path+'.ids'
     path = fix_length(path)
     try: 
         with open(path, 'r') as file:
@@ -93,7 +93,7 @@ def get_ids_for_keyword(keyword):
     return ids
 
 def get_abstract_for_id(theid):
-    path = 'Data/'+theid+'.txt'
+    path = 'Papers/'+theid+'.txt'
     try: 
         with open(path, 'r') as file:
             xml = file.read()
