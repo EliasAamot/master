@@ -72,13 +72,12 @@ def get_ids_for_keyword(keyword):
         current_page = 0
         while not done:
             try:
-                search_query = urllib2.quote("title:"+keyword) 
+                search_query = urllib2.quote('"'+keyword+'"') 
                 url = SEARCH_BASE_URL + search_query + AUTH + "&page=" + str(current_page) + "&items=100"
                 xml_dict = json.loads(urllib2.urlopen(url).read())
                 ids.extend([document['uuid'] for document in xml_dict['documents']])                
                 current_page += 1
-                print current_page
-                print xml_dict['total_pages']
+                print str(current_page) + "/" + str(xml_dict['total_pages'])
                 if current_page > int(xml_dict['total_pages']):
                     done = True
             except Exception as e:

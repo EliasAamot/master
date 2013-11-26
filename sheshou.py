@@ -17,30 +17,30 @@ def query(keyword):
     tfidfs = calcualte_tdidf(count_dict)
     print "Filtering potential B terms..."
     b_term_candidates = get_k_best_and_filter(tfidfs, 250, [word for word in keyword.split()])
-    for best in b_term_candidates:
-        print best, tfidfs[best]
-    
-#    print "Please choose B-terms (write numbers seperated by comma, no spaces)..."    
-#    b_terms = choose_b_terms(b_term_candidates)
-#    print "Extracting C-term candidates from B-keywords..."
-#    b_dict = dict()
-#    for b_term in b_terms:
-#        ids = get_ids([b_term])
-#        count_dict = parse_abstracts(ids)
-#        tfidfs = calcualte_tdidf(count_dict)
-#        b_dict[b_term] = tfidfs[:25]
-#    print "Ranking C-term candidates..."
-#    c_terms = rank(b_dict)
-#    print "Printing final results..."
-#    for c_term in c_terms[:40]:
-#        print c_term
+#    for best in b_term_candidates:
+#        print best, tfidfs[best]
+    print "Please choose B-terms (write numbers seperated by comma, no spaces)..."    
+    b_terms = choose_b_terms(b_term_candidates)
+    print "Extracting C-term candidates from B-keywords..."
+    b_dict = dict()
+    for b_term in b_terms:
+        ids = medeley_fetch.get_ids_for_keyword(b_term)
+        count_dict = parse_abstracts(ids)
+        tfidfs = calcualte_tdidf(count_dict)
+        b_dict[b_term] = tfidfs[:25]
+    print "Ranking C-term candidates..."
+    c_terms = rank(b_dict)
+    print "Printing final results..."
+    for c_term in c_terms[:40]:
+        print c_term
+# 4,6,9,11,13,15,16,22,27,30,31,35
       
 def parse_abstracts(ids):
     parser = nlp.StoreParser()
     all_counts = dict()
     for i, id in enumerate(ids):
         print i, "/", len(ids)
-        if i > 2000:
+        if i > 250:
             break
         # Join the new counts with the total
         counts = parser.parse_abstract(id)
