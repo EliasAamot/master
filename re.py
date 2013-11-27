@@ -214,6 +214,8 @@ class RelationPatternFactory:
                     current_pattern.name = ' '.join(splits[1:]).strip()
                 elif len(splits) == 3:
                     # This is a edge matcher
+                    if splits[0].lower() == "prep_*":
+                        splits[0] = "prep_of|prep_in|prep_with|prep_by|prep_for"
                     relations = tuple(splits[0].split("|"))
                     matcher = (relations, splits[1], splits[2])
                     current_pattern.add_edge_matcher(matcher)
