@@ -10,6 +10,7 @@ from collections import defaultdict
 import medeley_fetch
 import json
 import regex, nltk
+import pexpect
 
 class StoreParser():
     
@@ -17,9 +18,13 @@ class StoreParser():
         self.corenlp = StanfordCoreNLP()
         self.treemanipulator = TreeManipulator()
         self.stemmer = Stemmer()
+        self.blacklist = [line.strip() for line in open("blacklist.txt", 'r')]
 
     def parse_abstract(self, id):
         count_dict = dict()
+        if id in self.blacklist:
+            print 'Id {0} is blacklisted.'.format(id)
+            return count_dict
         path = "NPs/" + id + ".nps"
         try:
             with open(path, 'r') as file:
@@ -33,38 +38,43 @@ class StoreParser():
                         unstemmed[split[i]] = int(split[i+1])
                     count_dict[stemmed_np] = [int(count), unstemmed]
         except IOError:
-            print "Parsing " + str(id)
-            abstract = medeley_fetch.get_abstract_for_id(id)
-            # Can happen due to server overload
-            if abstract == None:
-                print "Skipping..."
-                return count_dict
-            parse = self.corenlp.parse(abstract)
-            document = json.loads(parse)
-            with open("Parses/" + id + ".json", 'w') as file:
-                file.write(parse)
-            # Extract all the nps from the parse trees
-            for sentence in document['sentences']:
-                parse_tree = sentence['parsetree']
-                nltk_tree = Tree(parse_tree)
-                    
-                nps = self.treemanipulator.get_all_np_variations(nltk_tree)
-                for original_np in nps:      
-                    if original_np != "":
-                        stemmed_np = self.stemmer.stem_string(original_np)
-                        if stemmed_np in count_dict.keys():
-                            count_dict[stemmed_np][0] += 1
-                            count_dict[stemmed_np][1][original_np] += 1
-                        else:
-                            count_dict[stemmed_np] = [1, defaultdict(int)]
-                            count_dict[stemmed_np][1][original_np] = 1
-            with open(path, 'w') as file:
-                for key in count_dict.iterkeys():
-                    file.write(str(key) + "\t" + str(count_dict[key][0]) + "\t")
-                    for original_np in count_dict[key][1].iterkeys():
-                        file.write(str(original_np) + "\t" + str(count_dict[key][1][original_np]) + "\t")
-                    file.write("\n")
+            try:
+                print "Parsing " + str(id)
+                abstract = medeley_fetch.get_abstract_for_id(id)
+                # Can happen due to server overload
+                if abstract == None:
+                    print "Skipping due to server overload..."
+                    return count_dict
+                parse = self.corenlp.parse(abstract)
+                document = json.loads(parse)
+                with open("Parses/" + id + ".json", 'w') as file:
+                    file.write(parse)
+                # Extract all the nps from the parse trees
+                for sentence in document['sentences']:
+                    parse_tree = sentence['parsetree']
+                    nltk_tree = Tree(parse_tree)
+                        
+                    nps = self.treemanipulator.get_all_np_variations(nltk_tree)
+                    for original_np in nps:      
+                        if original_np != "":
+                            stemmed_np = self.stemmer.stem_string(original_np)
+                            if stemmed_np in count_dict.keys():
+                                count_dict[stemmed_np][0] += 1
+                                count_dict[stemmed_np][1][original_np] += 1
+                            else:
+                                count_dict[stemmed_np] = [1, defaultdict(int)]
+                                count_dict[stemmed_np][1][original_np] = 1
+                with open(path, 'w') as file:
+                    for key in count_dict.iterkeys():
+                        file.write(str(key) + "\t" + str(count_dict[key][0]) + "\t")
+                        for original_np in count_dict[key][1].iterkeys():
+                            file.write(str(original_np) + "\t" + str(count_dict[key][1][original_np]) + "\t")
+                        file.write("\n")
+            except pexpect.ExceptionPexpect:
+                print "Timeout during parsing. Verify that the content is rubbish, and add to the blacklist..."
+                exit()
         return count_dict
+            
         
 class TreeManipulator:
     """

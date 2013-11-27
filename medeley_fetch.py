@@ -6,6 +6,7 @@ Methods for gathering medline papers based keywords or ids.
 """
 from regex import *
 import urllib2, json
+import nlp
 
 CONSUMER_KEY = "939b208ebeea32b816da61a1bce7de4605278cbae"
 AUTH = "/?consumer_key=" + CONSUMER_KEY
@@ -124,3 +125,4 @@ def get_abstract_for_id(theid):
 
 if __name__=="__main__":
     pass
+    

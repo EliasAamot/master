@@ -115,7 +115,7 @@ def rank(b_term_dict):
     c_term_dict = sortdict.SortDict()
     for b_term in b_term_dict:
         for c_candidate in b_term_dict[b_term]:
-            c_term_dict[c_candidate] += 1
+            c_term_dict[c_candidate] += 1   
     return c_term_dict
 
 if __name__=="__main__":
