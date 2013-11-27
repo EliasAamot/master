@@ -1,0 +1,8 @@
+# -*- coding: utf-8 -*-
+PATTERN ... result in ... increase in ... 
+prep_* A B
+A resulted|results|result|resulting
+B increase|increases|increasing|increased
+prep_* B Y
+nsubj A X
+OUTPUT +X -> +Y
