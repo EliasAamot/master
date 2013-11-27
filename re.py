@@ -7,8 +7,9 @@ Created on Fri Nov 22 16:14:44 2013
 import nltk
 import networkx as nx
 import matplotlib.pyplot as plt
+import copy
 
-def re_dp():
+def re_dp(patterns):
     with open('deps.txt', 'r') as file:
         dep_lines = [line.strip() for line in file]
     with open('trees.txt', 'r') as file:
@@ -23,48 +24,31 @@ def re_dp():
             G = nx.DiGraph()
             for dep in deps:
                 G.add_edge(dep[1], dep[2], label=dep[0])
-            
-            for edge in G.edges_iter(data=True):
-                found1 = False; found2 = False
-
-                for word in ["increases", "increased", "increase", "increasing"]:
-                    if edge[1] == word:
-                        found1 = True
-                for word in ["resulted", "result", "results", "resulting"]:
-                    if edge[0] == word:
-                        found2 = True
-                if (found1 and found2 and edge[2]['label']!="nsubj"):
-#                if (found1 and found2):
-                    anchor1 = edge[0]
-                    anchor2 = edge[1]
-                    label = edge[2]['label']
-                    # Find the X and Y head words
-                    x_head = None; y_head = None
-                    for edge in G.out_edges(anchor2, data=True):
-                        if edge[2]['label'] == "prep_in":
-                            x_head = edge[1]
-                    for edge in G.out_edges(anchor1, data=True):
-                        if edge[2]['label'] == "nsubj":
-                            y_head = edge[1]
-                    if x_head and y_head:
-                        sentence_tree = nltk.Tree(tree_lines[x])
+                
+            for pattern in patterns:
+                matches = RelationPatternMatcher(pattern).match(G)
+                for match in matches:
+                    # Then we have to try to find the phrases
+                    sentence_tree = nltk.Tree(tree_lines[x])
+                    # OPTIMIZATION POTENTIAL: Only locate phrases that are "terminal" i.e. in the output
+                    variable_phrases = dict()
+                    for v_name, v_value in match.items():
                         # Assumes that the heads word are unique...
-                        x_leaf_position = sentence_tree.leaves().index(x_head)
-                        x_tree_position = sentence_tree.leaf_treeposition(x_leaf_position)
-                        x_phrase = sentence_tree[x_tree_position[:-2]]
-                        x_string = ' '.join(x_phrase.leaves()).strip()                        
-                        
-                        y_leaf_position = sentence_tree.leaves().index(y_head)
-                        y_tree_position = sentence_tree.leaf_treeposition(y_leaf_position)
-                        y_phrase = sentence_tree[y_tree_position[:-2]]
-                        y_string = ' '.join(y_phrase.leaves()).strip()                        
-                        
-                        print "+{0} -> +{1}".format(y_string, x_string)
-                        print sentence_lines[x]
-                        print label
-                        
-                        draw_graph(G)
-      
+                        leaf_position = sentence_tree.leaves().index(v_value)
+                        tree_position = sentence_tree.leaf_treeposition(leaf_position)
+                        # TODO improve finding of phrases, maybe using concepts
+                        phrase = sentence_tree[tree_position[:-2]]
+                        string = ' '.join(phrase.leaves()).strip()
+                        variable_phrases[v_name]= string                                             
+                     
+                    # Finally print output of pattern
+                    output = pattern.output
+                    for v_name, v_phrase in variable_phrases.items():
+                        output = output.replace(v_name, v_phrase)
+                    print
+                    print output
+                    print sentence_lines[x]
+                    print
 
 
 def draw_graph(G, labels=None, graph_layout='shell',
@@ -95,46 +79,157 @@ def draw_graph(G, labels=None, graph_layout='shell',
                             
     edge_labs=dict([((u,v,),d['label'])
              for u,v,d in G.edges(data=True)])     
-    print edge_labs                           
+
     nx.draw_networkx_edge_labels(G, graph_pos, edge_labels=edge_labs, font_size=node_text_size,
                             font_family=text_font)
 
     # show graph
     plt.show()
 
+class RelationPatternMatcher:
+    
+    def unify(self, v1, v2):
+        """
+            Tries to unify two sets of variable assignments, V1 and V2. 
+            Returns the unification if there are no variables with different
+            values, None otherwise.
+        """
+        # OPTIMIZATION POTENTIAL?
+        unification = copy.copy(v1)
+        for key, value in v2.items():
+            if not key in unification:
+                unification[key] = value
+            elif value != unification[key]:
+                return None
+        return unification
+                
+    def generate_candidates(self, matchings):
+        """
+            Generates a list of variable assignments derived from the 
+            matching candidates provided.
+        """
+        candidates = []
+        variable1 = matchings[0][1]
+        variable2 = matchings[0][2]
+        
+        for matching_candidate in matchings[1]:
+            candidate = dict()
+            candidate[variable1] = matching_candidate[0]
+            candidate[variable2] = matching_candidate[1]
+            candidates.append(candidate)
+        return candidates    
+    
+    def __init__(self, relation_pattern):
+        self.relation_pattern = relation_pattern
+        self.edge_matchings = dict([(edge_matcher, []) for edge_matcher in relation_pattern.edge_matchers])
+        self.node_matchings = dict([(node_matcher, False) for node_matcher in relation_pattern.node_matchers])
 
-def re_pt():
-    with open('trees.txt', 'r') as file:
-        for i, line in enumerate(file):
-            tree = nltk.Tree(line.strip())
+    def match(self, graph):
+        complete_matches = []
+        
+        # Generate matching candidates
+        for edge in graph.edges_iter(data=True):
+            for edge_matcher in self.relation_pattern.edge_matchers:
+                if edge[2]['label'] in edge_matcher[0]:
+                    self.edge_matchings[edge_matcher].append(edge)
+        for node in graph.nodes_iter(data=False):
+            for node_matcher in self.relation_pattern.node_matchers:
+                if node in node_matcher[1]:
+                    self.node_matchings[node_matcher] = True
+                    
+        # If any node or edge is unmatched, matching is impossible
+        if not (all(self.node_matchings.values()) and all(self.edge_matchings.values())):
+            return []
             
-            # Discovery pattern 1
+        else:            
+            # The next problem is to find all complete matches (if any) in 
+            # match candidate space. This requires a search.
             
-            # 1.1 Look for increase(s/d)
-            treepath = None
-            for j, leaf in enumerate(tree.leaves()):
-                if leaf.lower() == "increase" or leaf.lower() == "increases" or leaf.lower() == "increased":
-                    treepath = tree.leaf_treeposition(j)
+            # OPTIMIZATION POTENTIAL: Pick the smallest one EM set to start with
+#            print self.edge_matchings
+#            print self.node_matchings
+      
+            stack = [(candidate, 1) for candidate in self.generate_candidates(self.edge_matchings.items()[0])]
             
-            # 1.2 Verify that the detected object is a verb
-            x = None; y = None
-            if treepath != None:
-                # Check the node above the leaf
-                node = tree[treepath[:-1]]
-                if "VB" in node.node:
-                    # 1.3 X = V///NP\
-                    subtree = tree[treepath[:-3]]
-                    for daughter in subtree:
-                        if daughter.node == "NP":
-                            x = ' '.join(daughter.leaves()).strip()
-                    # 1.4 Y = V//NP\
-                    subtree = tree[treepath[:-2]]
-                    for daughter in subtree:
-                        if daughter.node == "NP":
-                            y = ' '.join(daughter.leaves()).strip()
-            # 1.5 Print discovery if any
-            if x and y:
-                print "+({0}) -> +({1}) / {2}".format(str(x), str(y), i)
-            
+            # Conduct search
+            while stack:
+#                print "SEARCH_STACK: " + str(stack)
+                current_variables, next_i = stack.pop(0)
+                # If we have checked all the edge matchers, do node matching
+                if next_i >= len(self.edge_matchings):
+                    full_node_match = all(current_variables[node_matcher[0]] in node_matcher[1] for node_matcher in self.relation_pattern.node_matchers)
+                    if full_node_match:
+                        complete_matches.append(current_variables)
+                    else:
+                        pass # Discard search fork as unproductive
+                # Otherwise, match against new potential edge matchers
+                else:                
+                    for candidate in self.generate_candidates(self.edge_matchings.items()[next_i]):
+                        # Check to see if the new variable constraints unify with the existing constraints
+                        new_variables = self.unify(current_variables, candidate)
+                        if new_variables: # Unification successful, keep going
+                            stack.append( (new_variables, next_i+1) )
+                            
+            return complete_matches
+                        
+class RelationPattern:
+    def __init__(self):
+        self.edge_matchers = []
+        self.node_matchers = []
+        self.output = None
+        self.name = None
+    
+    def add_edge_matcher(self, edge_matcher):
+        self.edge_matchers.append(edge_matcher)
+
+    def add_node_matcher(self, node_matcher):
+        self.node_matchers.append(node_matcher)
+        
+    def __repr__(self):
+        return '[RelationPattern "{0}"]'.format(self.name)
+    
+
+class RelationPatternFactory:
+
+    def __init__(self, filename):
+        self.relation_patterns = []
+        self.build_from_file(filename)
+        
+    def build_from_file(self, filename):
+        current_pattern = None
+        with open(filename, 'r') as file:
+            for line in file:
+                line = line.strip()
+                # Skip comments and blank lines
+                if len(line)==0 or line[0] == "#":
+                    continue 
+                splits = line.split()
+                if splits[0].upper() == "OUTPUT":
+                    current_pattern.output = ' '.join(splits[1:]).strip()
+                elif splits[0].upper() == "PATTERN":
+                    # This is the begining of a new pattern
+                    if current_pattern != None:
+                        self.relation_patterns.append(current_pattern)
+                    current_pattern = RelationPattern()
+                    current_pattern.name = ' '.join(splits[1:]).strip()
+                elif len(splits) == 3:
+                    # This is a edge matcher
+                    relations = tuple(splits[0].split("|"))
+                    matcher = (relations, splits[1], splits[2])
+                    current_pattern.add_edge_matcher(matcher)
+                elif len(splits) == 2:
+                    # This is a node matcher
+                    words = tuple(splits[1].split("|"))
+                    matcher = (splits[0], words)
+                    current_pattern.add_node_matcher(matcher)
+                else:
+                    print 'Command "{0}" not recongized in line: {1}'.format(splits[0], line)   
+        self.relation_patterns.append(current_pattern)
+        
+    def build(self):
+        return self.relation_patterns
+    
 if __name__=="__main__":
-    re_dp()
+    patterns = RelationPatternFactory("patterns.txt").build()
+    re_dp(patterns)
+    
