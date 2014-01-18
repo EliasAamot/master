@@ -41,7 +41,7 @@ class StoreParser():
             try:
                 print "Parsing " + str(id)
                 abstract = medeley_fetch.get_abstract_for_id(id)
-                # Can happen due to server overload
+                # Can happen due to server overload, but apparently for other reasons as well
                 if abstract == None:
                     print "Skipping due to server overload..."
                     return count_dict
