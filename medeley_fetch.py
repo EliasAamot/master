@@ -109,9 +109,9 @@ def get_abstract_for_id(theid):
             except Exception as e:
                 if '429' in str(e):
                     print "HTTP Error 429: Too many requests. Try again in one hour or more."
-                    return None
+                    raise Exception('TooManyRequestsException')
                 else:
-                    print "Exception " + str(e) + " occured while downloading paper " + theid + ". Trying again."
+                    print "Unknown exception " + str(e) + " occured while downloading paper " + theid + ". Trying again."
     with open(path, 'w') as file:
         file.write(xml)
     xml_dict = json.loads(xml)
@@ -119,7 +119,7 @@ def get_abstract_for_id(theid):
         if 'abstract' in xml_dict.keys():
             return xml_dict['abstract']
         else:
-            return None
+            raise Exception('PaperHasNoAbstractException')
     except AttributeError:
         print xml_dict
 

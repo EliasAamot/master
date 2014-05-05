@@ -6,6 +6,7 @@ Created on Thu Nov 21 14:25:40 2013
 """
 import os, json, re
 from corenlp import StanfordCoreNLP
+import matplotlib.pyplot as plt
 
 def create_file():
     path = "Papers"
@@ -52,4 +53,16 @@ def parse_file():
     sentence_file.close()
     
 if __name__=="__main__":
-    parse_file()
+#    parse_file()
+    counts = [0 for i in range(2016)]
+    for filename in os.listdir('Papers'):
+        with open('Papers/'+filename,'r') as file:
+            try:
+                xml = json.loads(file.read())
+                counts[ int(xml['year']) ] += 1
+            except:
+                pass
+    x = range(2016)
+
+    plt.plot(x, counts)
+    plt.show()

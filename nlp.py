@@ -40,16 +40,23 @@ class StoreParser():
         except IOError:
             try:
                 print "Parsing " + str(id)
-                abstract = medeley_fetch.get_abstract_for_id(id)
-                # Can happen due to server overload, but apparently for other reasons as well
-                if abstract == None:
-                    print "Skipping due to server overload..."
+                try:
+                    abstract = medeley_fetch.get_abstract_for_id(id)
+                except Exception as e:
+                    if e.args[0] == "TooManyRequestsException":
+                        print "Skipping due to server overload, consider halting program..."
+                    elif e.args[0] == "PaperHasNoAbstractException":
+                        print "Object has no abstract, probably not a paper..."
+                    else: 
+                        print "Unknown exception occured when fetching paper..."
                     return count_dict
+                # Can happen due to server overload, but apparently for other reasons as well
                 parse = self.corenlp.parse(abstract)
                 document = json.loads(parse)
                 with open("Parses/" + id + ".json", 'w') as file:
                     file.write(parse)
                 # Extract all the nps from the parse trees
+                # TODO: Not that important, I guess
                 for sentence in document['sentences']:
                     parse_tree = sentence['parsetree']
                     nltk_tree = Tree(parse_tree)
