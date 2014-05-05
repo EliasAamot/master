@@ -11,6 +11,8 @@ colour_map = {"Variable":"deeppink",
               "Increase":"salmon",
               "Decrease":"turquoise",
               "Correlate":"gray",
+              "Negative_Correlate":"gray",
+              "Positive_Correlate":"gray",
               "Cause":"gray",
               "And":"green",
               "Or":"green",
@@ -28,7 +30,7 @@ def get_colour(start, end, anns):
     return colour
 
 if __name__=="__main__":
-    letsfind = ['increase', 'more', 'stimulate']    
+    letsfind = ['supply']    
     
     files = ["NParses/" + filename for filename in os.listdir("NParses")]
     
@@ -60,7 +62,7 @@ if __name__=="__main__":
                 # Build actual graph content
                 # iterate over the collapsed, ccprocessed dependences
                 for dependency in sentence.iter('dependencies'):
-                    if not dependency.attrib['type'] == "collapsed-ccprocessed-dependencies":
+                    if not dependency.attrib['type'] == "basic-dependencies":
                         continue
                     for dep in dependency.iter('dep'):
                         _type = dep.attrib['type']
@@ -83,26 +85,3 @@ if __name__=="__main__":
     for dotfile in dotfiles:  
         args = ["dot", "-Tsvg", dotfile, "-o", dotfile[:dotfile.index('.')]+".svg"]
         subprocess.call(["dot", "-Tsvg", dotfile, "-o", dotfile[:dotfile.index('.'):]+".svg"])
-    """
-        text = open(filen, 'r').read()
-        xml = json.loads(text)
-#        print xml['gram']['sentences'][0].keys()
-
-        # Convert all dependency texts to lower case
-        dependencies = [[strr.lower() for strr in dep] for dep in xml['gram']['sentences'][0]['dependencies']]
-        
-        
-        for dep in dependencies:
-            if dep[1] in letsfind:
-                findings[dep[1]].append(dep)
-       
-    for k, v in findings.items():        
-        print k
-        args = collections.defaultdict(set)
-        for dep in v:
-            args[dep[0]].add(dep[2])
-        for kk, vv in args.items():
-            print "\t"+kk
-            for vvv in vv:
-                print "\t\t"+vvv
-                """
