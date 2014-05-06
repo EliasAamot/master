@@ -281,211 +281,93 @@ def pattern_matching(pattern_base):
                         # Because subpatterns share variables, all matches of a 
                         # subpattern must be stored for the next subpattern,
                         # along with variable assignments, so that the matching
-                        # match is not discarded.
+                        # match is not discarded.                
+                        
+                        subpattern_matchings = []
                         if len(pattern.subpatterns) == 1:
-                            # Matching must be conducted as a search.
-                            # Search state data is :
-                            #  0) subpattern
-                            #  1) current position (in subpattern)
-                            #  2) downwards complete
-                            #  3) current node
-                            #  4) variable assignment
-                            # 
-                            # Matching is performed by matching one element
-                            # at the time. Matching starts from T, then
-                            # works downwards through the dep tree until
-                            # pattern is fully matched downwards. Then 
-                            # matching is conducted upwards from T.
-                                
-                            stack = []
-                            # Create initial search states, one for each trigger word match
-                            subpattern = pattern.subpatterns[0]
-                            current_position = subpattern.index('T')
-                            downwards_complete = False
-                            trigger_nodes = lemma_to_nodes_idx[trigger]
-                            for trigger_node in trigger_nodes:
-                                start_state = (subpattern,
-                                               current_position,
-                                               downwards_complete,
-                                               trigger_node,
-                                               {'T' : trigger_node})
-                                stack.append(start_state)
-                            assert stack
-                            
-                            # Conduct BFS
-                            subpattern_matchings = []
-                            while stack:
-                                # Get the next search state to search from
-                                current_search_state = stack.pop(0)
-                                print current_search_state, trigger
-                                # Unpack search state
-                                cur_subpattern = current_search_state[0]
-                                current_position = current_search_state[1]
-                                downwards_complete = current_search_state[2]
-                                current_node = current_search_state[3]
-                                variable_assignment = current_search_state[4]
-                                # Find next element to match
-                                if not downwards_complete:
-                                    current_position += 1
-                                    if current_position == len(cur_subpattern):
-                                        downwards_complete = True
-                                        current_position = cur_subpattern.index('T')
-                                if downwards_complete:
-                                    current_position -= 1
-                                    if current_position < 0:
-                                        # Match completed, store
-                                        print "Complete match!"
-                                        variable_assignment['ChangeType'] = pattern.change_type
-                                        variable_assignment['IsThing'] = pattern.is_thing
-                                        subpattern_matchings.append(variable_assignment)
-                                        continue
-                                # Try to match next element
-                                match_target = cur_subpattern[current_position]
-                                # Match target is a string
-                                if match_target[0] == '"':
-                                    string_content = match_target[1:-1]
-                                    if string_content == current_node.lemma:
-                                        # If the strings are consistent, store search state
-                                        new_ss = (subpattern,
-                                                  current_position,
-                                                  downwards_complete,
-                                                  current_node,
-                                                  variable_assignment)
-                                        stack.append(new_ss)
-                                    else:
-                                        print "String non-match:", string_content, "vs", current_node.lemma
-                                # Match target is a variable, check assignment consitency
-                                elif match_target in ['N', 'S', 'T', 'X']:
-                                    if match_target in variable_assignment:
-                                        if variable_assignment[match_target] != current_node:
-                                            # Variable assignment clash! Do not keep working on this search state
-                                            continue
-                                    # Then store variable assignemnt (if consistent, then no problem in overwriting)
-                                    # I use only the root node even with N and S
-                                    variable_assignment = copy.deepcopy(variable_assignment)
-                                    variable_assignment[match_target] = current_node
-                                    # Store search state with matching and variable assignment
-                                    new_ss = (subpattern,
-                                              current_position,
-                                              downwards_complete,
-                                              current_node,
-                                              variable_assignment)
-                                    stack.append(new_ss)
-                                # Match target is a dependency
-                                else:
-                                    # Store a new search state for every instance
-                                    # of this dependency type found
-                                    
-                                    # Directions depend on downwards_complete or not
-                                    if not downwards_complete:
-                                        for outedge in current_node.outedges:
-                                            if outedge.dep == match_target:
-                                                # Match, create a new search state
-                                                new_ss = (subpattern, 
-                                                          current_position,
-                                                          downwards_complete,
-                                                          outedge.to_node,
-                                                          variable_assignment)
-                                                stack.append(new_ss)
-                                    else:
-                                        print "Eg er her, det sug!" # TODO
-                                        # TODO : Dette verker ikkje, trur eg
-                                        for inedge in current_node.inedges:
-                                            if inedge.dep == match_target:
-                                                # Match, create a new search state
-                                                new_ss = (subpattern, 
-                                                          current_position,
-                                                          downwards_complete,
-                                                          id_to_node_idx[inedge.from_id],
-                                                          variable_assignment)
-                                                stack.append(new_ss)
-                            
-                            # SEARCH IS COMPLETED, LET'S MAKE SOMETHING OUT OF IT!!!!
-                            # TODO : Må få med chagne-dir og VAR/THN
-                            if subpattern_matchings:
-                                # Make one annotation for every match
-                                for sm in subpattern_matchings:
-                                    # Assert that the match is good
-                                    assert 'S' in sm.keys() or 'N' in sm.keys(), "This match lacks a variable!"
-                                    assert not ('S' in sm.keys() and 'N' in sm.keys()), "This match has both a N match and a S match. Pattern malformed somehow!"
-                                    assert 'T' in sm.keys(), "This match lacks a trigger. Pattern malformed somehow!"
-                                    assert sm['ChangeType'] in ['Increase', 'Decrease', 'Change'], "The change type of the matched pattern is incorrect."
-                                    assert 'IsThing' in sm.keys(), "The pattern is neither specified as signalling a thing or a variable!"
-                                    
-                                    change_type = sm['ChangeType']
-                                    event_trigger = sm['T']
-                                    theme_trigger = None
-                                    
-                                    if 'S' in sm.keys():
-                                        theme_trigger = sm['S'].get_subtree()
-                                    else:
-                                        theme_trigger = sm['N'].get_restrictive_subtree(event_trigger)
-                                        
-                                    if sm['IsThing']:
-                                        thing_var_type = "Thing"
-                                    else:
-                                        thing_var_type = "Variable"
-                                    
-                                    print "Match details"
-
-                                    # To find the word sequence for the theme, we use the
-                                    # following heuristic: Take the longest continous strip
-                                    # of words and make it into the theme.
-
-                                    # Turn theme_trigger into a sorted list
-                                    theme_list = [(word.id,word.lemma,word) for word in theme_trigger]
-                                    theme_list = sorted(theme_list, key=lambda v : v[0])
-                                    # Iterate over sorted list, and extract continous chunks
-                                    chunks = []
-                                    current_chunk = [theme_list[0]]
-                                    for word in theme_list[1:]:
-                                        if int(word[0]) == int(current_chunk[-1][0])+1:
-                                            current_chunk.append(word)
-                                        else:
-                                            chunks.append(current_chunk)
-                                            current_chunk = [word]
-                                    chunks.append(current_chunk)
-                                    
-                                    chunks = sorted(chunks, key=lambda v : len(' '.join([vv[1] for vv in v])), reverse=True)
-                                    best_chunk = chunks[0]
-                                    
-                                    # Turn this into a string for the annotation file
-                                    ttrigger_id = "T" + str(annotator.get_next_T())
-                                    type_str = thing_var_type
-                                    start_off = best_chunk[0][2].start_offset
-                                    end_off = best_chunk[-1][2].end_offset
-                                    trigger_str = paper_text[int(start_off):int(end_off)]
-                                    
-                                    ann_str = "\t".join([ttrigger_id, type_str+" "+start_off+" "+end_off, trigger_str]).strip("\t")
-                                    annotator.add_annotation(ann_str)
-                                    
-                                    # Then to find the trigger annotation of the event
-                                    etrigger_id = "T" + str(annotator.get_next_T())
-                                    etype_str = change_type
-                                    start_off = event_trigger.start_offset
-                                    end_off = event_trigger.end_offset
-                                    trigger_str = paper_text[int(start_off):int(end_off)]
-                                    
-                                    ann_str = "\t".join([etrigger_id, etype_str+" "+start_off+" "+end_off, trigger_str]).strip("\t")
-                                    annotator.add_annotation(ann_str)
-                                    
-                                    # ...and the event annotation of the event
-                                    event_id = "E" + str(annotator.get_next_E())
-                                    type_str = etype_str
-                                    type_id = etrigger_id
-                                    theme_str = "Theme"
-                                    theme_id = ttrigger_id
-                                    
-                                    ann_str = event_id + "\t" + type_str+":"+type_id + " " + theme_str+":"+theme_id
-                                    annotator.add_annotation(ann_str)
-                                    
-                                                           
+                            subpattern_matchings = subpattern_match(pattern, trigger, {}, lemma_to_nodes_idx, id_to_node_idx)
                         else:
-                            print "\n"*3
-                            print pattern.subpatterns
-                            print "\n"*3
-#                            raise NotImplementedError, "Multiple patterns"
-        
+                            assert len(pattern.subpatterns)==2, "A pattern needs to consist of one or two subpatterns. No more, no less. Sorry!"
+                            
+                            
+                        # SEARCH IS COMPLETED, LET'S MAKE SOMETHING OUT OF IT!!!!
+                        if subpattern_matchings:
+                            # Make one annotation for every match
+                            for sm in subpattern_matchings:
+                                # Assert that the match is good
+                                assert 'S' in sm.keys() or 'N' in sm.keys(), "This match lacks a variable!"
+                                assert not ('S' in sm.keys() and 'N' in sm.keys()), "This match has both a N match and a S match. Pattern malformed somehow!"
+                                assert 'T' in sm.keys(), "This match lacks a trigger. Pattern malformed somehow!"
+                                assert sm['ChangeType'] in ['Increase', 'Decrease', 'Change'], "The change type of the matched pattern is incorrect."
+                                assert 'IsThing' in sm.keys(), "The pattern is neither specified as signalling a thing or a variable!"
+                                    
+                                change_type = sm['ChangeType']
+                                event_trigger = sm['T']
+                                theme_trigger = None
+                                    
+                                if 'S' in sm.keys():
+                                    theme_trigger = sm['S'].get_subtree()
+                                else:
+                                    theme_trigger = sm['N'].get_restrictive_subtree(event_trigger)
+                                    
+                                if sm['IsThing']:
+                                    thing_var_type = "Thing"
+                                else:
+                                    thing_var_type = "Variable"
+                                    
+                                print "Match details"
+
+                                # To find the word sequence for the theme, we use the
+                                # following heuristic: Take the longest continous strip
+                                # of words and make it into the theme.
+
+                                # Turn theme_trigger into a sorted list
+                                theme_list = [(word.id,word.lemma,word) for word in theme_trigger]
+                                theme_list = sorted(theme_list, key=lambda v : v[0])
+                                # Iterate over sorted list, and extract continous chunks
+                                chunks = []
+                                current_chunk = [theme_list[0]]
+                                for word in theme_list[1:]:
+                                    if int(word[0]) == int(current_chunk[-1][0])+1:
+                                        current_chunk.append(word)
+                                    else:
+                                        chunks.append(current_chunk)
+                                        current_chunk = [word]
+                                chunks.append(current_chunk)
+                                # Find the longest chunk to use as trigger
+                                chunks = sorted(chunks, key=lambda v : len(' '.join([vv[1] for vv in v])), reverse=True)
+                                best_chunk = chunks[0]
+                                    
+                                # Turn this into a string for the annotation file
+                                ttrigger_id = "T" + str(annotator.get_next_T())
+                                type_str = thing_var_type
+                                start_off = best_chunk[0][2].start_offset
+                                end_off = best_chunk[-1][2].end_offset
+                                trigger_str = paper_text[int(start_off):int(end_off)]
+                                    
+                                ann_str = "\t".join([ttrigger_id, type_str+" "+start_off+" "+end_off, trigger_str]).strip("\t")
+                                annotator.add_annotation(ann_str)
+                                    
+                                # Then to find the trigger annotation of the event
+                                etrigger_id = "T" + str(annotator.get_next_T())
+                                etype_str = change_type
+                                start_off = event_trigger.start_offset
+                                end_off = event_trigger.end_offset
+                                trigger_str = paper_text[int(start_off):int(end_off)]
+                                    
+                                ann_str = "\t".join([etrigger_id, etype_str+" "+start_off+" "+end_off, trigger_str]).strip("\t")
+                                annotator.add_annotation(ann_str)
+                                    
+                                # ...and the event annotation of the event
+                                event_id = "E" + str(annotator.get_next_E())
+                                type_str = etype_str
+                                type_id = etrigger_id
+                                theme_str = "Theme"
+                                theme_id = ttrigger_id
+                                    
+                                ann_str = event_id + "\t" + type_str+":"+type_id + " " + theme_str+":"+theme_id
+                                annotator.add_annotation(ann_str)
+                                    
         #
         #   When a paper has been successfully pattern matched, 
         #   store what was found in a ANN file
@@ -493,6 +375,133 @@ def pattern_matching(pattern_base):
         with open(paper[:paper.index('.')]+".ann", 'w') as annfile:
             for annotation in annotator.annotations:
                 annfile.write(annotation+"\n")
+                
+def subpattern_match(pattern, trigger, variable_assignment, lemma_to_nodes_idx, id_to_node_idx):
+     # Matching must be conducted as a search.
+     # Search state data is :
+         #  0) subpattern
+         #  1) current position (in subpattern)
+         #  2) downwards complete
+         #  3) current node
+         #  4) variable assignment
+     # 
+     # Matching is performed by matching one element
+     # at the time. Matching starts from T, then
+     # works downwards through the dep tree until
+     # pattern is fully matched downwards. Then 
+     # matching is conducted upwards from T.
+     
+     #TODO Variable assignment not used
+                                
+    stack = []
+    # Create initial search states, one for each trigger word match
+    subpattern = pattern.subpatterns[0]
+    current_position = subpattern.index('T')
+    downwards_complete = False
+    trigger_nodes = lemma_to_nodes_idx[trigger]
+    for trigger_node in trigger_nodes:
+        start_state = (subpattern,
+                       current_position,
+                       downwards_complete,
+                       trigger_node,
+                       {'T' : trigger_node})
+        stack.append(start_state)
+    assert stack
+                            
+    # Conduct BFS
+    subpattern_matchings = []
+    while stack:
+        # Get the next search state to search from
+        current_search_state = stack.pop(0)
+#        print current_search_state, trigger
+        # Unpack search state
+        cur_subpattern = current_search_state[0]
+        current_position = current_search_state[1]
+        downwards_complete = current_search_state[2]
+        current_node = current_search_state[3]
+        variable_assignment = current_search_state[4]
+        # Find next element to match
+        if not downwards_complete:
+            current_position += 1
+            if current_position == len(cur_subpattern):
+                downwards_complete = True
+                current_position = cur_subpattern.index('T')
+        if downwards_complete:
+            current_position -= 1
+            if current_position < 0:
+                # Match completed, store
+#                print "Complete match!"
+                variable_assignment['ChangeType'] = pattern.change_type
+                variable_assignment['IsThing'] = pattern.is_thing
+                subpattern_matchings.append(variable_assignment)
+                continue
+        # Try to match next element
+        match_target = cur_subpattern[current_position]
+        # Match target is a string
+        if match_target[0] == '"':
+            string_content = match_target[1:-1]
+            if string_content == current_node.lemma:
+                # If the strings are consistent, store search state
+                new_ss = (subpattern,
+                          current_position,
+                          downwards_complete,
+                          current_node,
+                          variable_assignment)
+                stack.append(new_ss)
+            else:
+                pass
+#                print "String non-match:", string_content, "vs", current_node.lemma
+        # Match target is a variable, check assignment consitency
+        elif match_target in ['N', 'S', 'T', 'X']:
+            if match_target in variable_assignment:
+                if variable_assignment[match_target] != current_node:
+                    # Variable assignment clash! Do not keep working on this search state
+#                    print "Variable clash..."
+                    continue
+            # Then store variable assignemnt (if consistent, then no problem in overwriting)
+            # I use only the root node even with N and S
+            variable_assignment = copy.deepcopy(variable_assignment)
+            variable_assignment[match_target] = current_node
+            # Store search state with matching and variable assignment
+            new_ss = (subpattern,
+                      current_position,
+                      downwards_complete,
+                      current_node,
+                      variable_assignment)
+            stack.append(new_ss)
+        # Match target is a dependency
+        else:
+            # Store a new search state for every instance
+            # of this dependency type found
+                                    
+            # Directions depend on downwards_complete or not
+            if not downwards_complete:
+                for outedge in current_node.outedges:
+                    if outedge.dep == match_target:
+                        # Match, create a new search state
+                        new_ss = (subpattern, 
+                                  current_position,
+                                  downwards_complete,
+                                  outedge.to_node,
+                                  variable_assignment)
+                        stack.append(new_ss)
+#                    else:
+#                        print "Non-match dep edge", outedge.dep, "vs", match_target
+            else:
+#                print "Baklengs"
+                for inedge in current_node.inedges:
+                    if inedge.dep == match_target:
+                        # Match, create a new search state
+                        new_ss = (subpattern, 
+                                  current_position,
+                                  downwards_complete,
+                                  id_to_node_idx[inedge.from_id],
+                                  variable_assignment)
+                        stack.append(new_ss)
+#                    else:
+#                        print "Non-match dep edge", inedge.dep, "vs", match_target
+    
+    return subpattern_matchings
             
 
 if __name__ == "__main__":
