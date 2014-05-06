@@ -3,12 +3,10 @@
 Script that automatically annotates papers according to the patterns given.
 
 
-TODOs:
+TODO s:
     1) Multiple subpatterns
         a) positive
         b) negative
-    2) Upwards direction
-    3) Gjer om til annotering
 """
 import os, collections, subprocess
 import xml.etree.ElementTree as ET
@@ -43,17 +41,33 @@ class Pattern:
         return "Pattern_"+self.change_type+"_"+thingstring+"_"+str(self.subpatterns)
 
 class Node:
-    def __init__(self, id, lemma):
+    def __init__(self, id, lemma, start, end):
         self.id = id
         self.lemma = lemma
         self.inedges = []
         self.outedges = []
+        self.start_offset = start
+        self.end_offset = end
     def __repr__(self):
         return str(self.id) + ":" + self.lemma
+    def __eq__(self, other):
+        return self.id == other.id and self.lemma == other.lemma and self.start_offset == other.start_offset and self.end_offset == other.end_offset
+    def __hash__(self):
+        return (71 + hash(self.id) + hash(self.lemma) + hash(self.start_offset) + hash(self.end_offset)) / 5
     def get_subtree(self):
         subtree = set()
         subtree.add(self)
         for outedge in self.outedges:
+            subtree = subtree.union(outedge.to_node.get_subtree())
+        return subtree
+    def get_restrictive_subtree(self, blocknode):
+        subtree = set()
+        subtree.add(self)
+        for outedge in self.outedges:
+            # Stay away from useless nodes
+            if outedge.dep in ['dep', 'appos', 'aux', 'mark', 'expl', 'cop', 'advmod']: continue
+            # Stay away from the main trigger node
+            if outedge.to_node == blocknode: continue
             subtree = subtree.union(outedge.to_node.get_subtree())
         return subtree
 class Edge:
@@ -63,6 +77,23 @@ class Edge:
         self.dep = dep
     def __repr__(self):
         return str(self.to_id) + "->" + str(self.from_id) + ":" + str(self.dep)
+class Annotator:
+    """
+        Object to keep track of information required for annotation
+    """
+    def __init__(self):
+        self.annotations = []
+        self.max_T_id = 0
+        self.max_E_id = 0
+    def get_next_T(self):
+        self.max_T_id += 1
+        return self.max_T_id
+    def get_next_E(self):
+        self.max_E_id += 1
+        return self.max_E_id
+    def add_annotation(self, annotation):
+        self.annotations.append(annotation)
+
 
 #
 # Main subroutines
@@ -79,9 +110,9 @@ def load_patterns():
     current_trigger = None
     
     # Pack up the filenames with the type patterns stored in there
-    types_and_files = [("increase", os.path.join(pattern_folder, increase_pattern_file)),
-                       ("decrease", os.path.join(pattern_folder, decrease_pattern_file)),
-                       ("change", os.path.join(pattern_folder, change_pattern_file)) ]
+    types_and_files = [("Increase", os.path.join(pattern_folder, increase_pattern_file)),
+                       ("Decrease", os.path.join(pattern_folder, decrease_pattern_file)),
+                       ("Change", os.path.join(pattern_folder, change_pattern_file)) ]
     
     # Read in the patterns
     for change_type, filename in types_and_files:
@@ -193,6 +224,8 @@ def pattern_matching(pattern_base):
     papers = [os.path.join(target_folder, paper) for paper in os.listdir(target_folder) if ".xml" in paper]
     
     for paper in papers:
+        annotator = Annotator()
+        paper_text = open(paper[:paper.index('.')]+".txt", 'r').read()
         xml = ET.parse(paper)
         
         # For every sentence, build a graph and try pattern matching in the graph
@@ -205,13 +238,15 @@ def pattern_matching(pattern_base):
             lemma_to_nodes_idx = collections.defaultdict(list)        
             id_to_node_idx = {}       
             # Build the nodes in the graph from tokens, remember to include a root node
-            root = Node("0", "ROOT")
+            root = Node("0", "ROOT", -1, -1)
             id_to_node_idx["0"] = root
             nodes = [root]
             for token in sentence.iter('token'):
                 id = token.attrib['id']
                 lemma = token.find('lemma').text
-                node = Node(id, lemma)
+                start = token.find('CharacterOffsetBegin').text
+                end = token.find('CharacterOffsetEnd').text
+                node = Node(id, lemma, start, end)
                 nodes.append(node)
                 lemma_to_nodes_idx[lemma].append(node)
                 id_to_node_idx[id] = node
@@ -247,8 +282,6 @@ def pattern_matching(pattern_base):
                         # subpattern must be stored for the next subpattern,
                         # along with variable assignments, so that the matching
                         # match is not discarded.
-                        # TODO : Multiple subpatterns
-                        # TODO : Negative subpatterns
                         if len(pattern.subpatterns) == 1:
                             # Matching must be conducted as a search.
                             # Search state data is :
@@ -284,7 +317,7 @@ def pattern_matching(pattern_base):
                             while stack:
                                 # Get the next search state to search from
                                 current_search_state = stack.pop(0)
-                                print current_search_state
+                                print current_search_state, trigger
                                 # Unpack search state
                                 cur_subpattern = current_search_state[0]
                                 current_position = current_search_state[1]
@@ -302,6 +335,8 @@ def pattern_matching(pattern_base):
                                     if current_position < 0:
                                         # Match completed, store
                                         print "Complete match!"
+                                        variable_assignment['ChangeType'] = pattern.change_type
+                                        variable_assignment['IsThing'] = pattern.is_thing
                                         subpattern_matchings.append(variable_assignment)
                                         continue
                                 # Try to match next element
@@ -324,7 +359,6 @@ def pattern_matching(pattern_base):
                                     if match_target in variable_assignment:
                                         if variable_assignment[match_target] != current_node:
                                             # Variable assignment clash! Do not keep working on this search state
-                                            print "Clash!!!!"
                                             continue
                                     # Then store variable assignemnt (if consistent, then no problem in overwriting)
                                     # I use only the root node even with N and S
@@ -375,28 +409,91 @@ def pattern_matching(pattern_base):
                                     assert 'S' in sm.keys() or 'N' in sm.keys(), "This match lacks a variable!"
                                     assert not ('S' in sm.keys() and 'N' in sm.keys()), "This match has both a N match and a S match. Pattern malformed somehow!"
                                     assert 'T' in sm.keys(), "This match lacks a trigger. Pattern malformed somehow!"
+                                    assert sm['ChangeType'] in ['Increase', 'Decrease', 'Change'], "The change type of the matched pattern is incorrect."
+                                    assert 'IsThing' in sm.keys(), "The pattern is neither specified as signalling a thing or a variable!"
                                     
+                                    change_type = sm['ChangeType']
                                     event_trigger = sm['T']
                                     theme_trigger = None
                                     
                                     if 'S' in sm.keys():
                                         theme_trigger = sm['S'].get_subtree()
                                     else:
-                                        # N needs some pruning
-                                        preprune = sm['N'].get_subtree()
-                                        # TODO pruning
-                                        theme_trigger = preprune
+                                        theme_trigger = sm['N'].get_restrictive_subtree(event_trigger)
                                         
-                                    print "Match details" 
-                                    print event_trigger
-                                    print theme_trigger
-                                            
-                                exit()
-                            
+                                    if sm['IsThing']:
+                                        thing_var_type = "Thing"
+                                    else:
+                                        thing_var_type = "Variable"
+                                    
+                                    print "Match details"
+
+                                    # To find the word sequence for the theme, we use the
+                                    # following heuristic: Take the longest continous strip
+                                    # of words and make it into the theme.
+
+                                    # Turn theme_trigger into a sorted list
+                                    theme_list = [(word.id,word.lemma,word) for word in theme_trigger]
+                                    theme_list = sorted(theme_list, key=lambda v : v[0])
+                                    # Iterate over sorted list, and extract continous chunks
+                                    chunks = []
+                                    current_chunk = [theme_list[0]]
+                                    for word in theme_list[1:]:
+                                        if int(word[0]) == int(current_chunk[-1][0])+1:
+                                            current_chunk.append(word)
+                                        else:
+                                            chunks.append(current_chunk)
+                                            current_chunk = [word]
+                                    chunks.append(current_chunk)
+                                    
+                                    chunks = sorted(chunks, key=lambda v : len(' '.join([vv[1] for vv in v])), reverse=True)
+                                    best_chunk = chunks[0]
+                                    
+                                    # Turn this into a string for the annotation file
+                                    ttrigger_id = "T" + str(annotator.get_next_T())
+                                    type_str = thing_var_type
+                                    start_off = best_chunk[0][2].start_offset
+                                    end_off = best_chunk[-1][2].end_offset
+                                    trigger_str = paper_text[int(start_off):int(end_off)]
+                                    
+                                    ann_str = "\t".join([ttrigger_id, type_str+" "+start_off+" "+end_off, trigger_str]).strip("\t")
+                                    annotator.add_annotation(ann_str)
+                                    
+                                    # Then to find the trigger annotation of the event
+                                    etrigger_id = "T" + str(annotator.get_next_T())
+                                    etype_str = change_type
+                                    start_off = event_trigger.start_offset
+                                    end_off = event_trigger.end_offset
+                                    trigger_str = paper_text[int(start_off):int(end_off)]
+                                    
+                                    ann_str = "\t".join([etrigger_id, etype_str+" "+start_off+" "+end_off, trigger_str]).strip("\t")
+                                    annotator.add_annotation(ann_str)
+                                    
+                                    # ...and the event annotation of the event
+                                    event_id = "E" + str(annotator.get_next_E())
+                                    type_str = etype_str
+                                    type_id = etrigger_id
+                                    theme_str = "Theme"
+                                    theme_id = ttrigger_id
+                                    
+                                    ann_str = event_id + "\t" + type_str+":"+type_id + " " + theme_str+":"+theme_id
+                                    annotator.add_annotation(ann_str)
+                                    
+                                                           
                         else:
-                            raise NotImplementedError, "Multiple patterns"
+                            print "\n"*3
+                            print pattern.subpatterns
+                            print "\n"*3
+#                            raise NotImplementedError, "Multiple patterns"
         
-    
+        #
+        #   When a paper has been successfully pattern matched, 
+        #   store what was found in a ANN file
+        #
+        with open(paper[:paper.index('.')]+".ann", 'w') as annfile:
+            for annotation in annotator.annotations:
+                annfile.write(annotation+"\n")
+            
 
 if __name__ == "__main__":
     print "Loading in and verifying patterns..."
