@@ -6,7 +6,7 @@ import os, collections
 
 if __name__ == "__main__":
     
-    brat_folder = "/home/made/master/ANN"
+    brat_folder = "ANN"
     filenames = [brat_folder + "/" + filn for filn in os.listdir(brat_folder) if ".ann" in filn]
     
     triggers = collections.defaultdict(list)  
