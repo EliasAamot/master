@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Script that automatically annotates papers according to the patterns given.
-"""
-import os, collections
 
-class Pattern:
-    def __init__(self, change_type, is_thing):
-        self.change_type = change_type
-        self.is_thing = is_thing
-        self.subpatterns = list()
+"""
+import os, collections, subprocess
+import xml.etree.ElementTree as ET
+
+#
+# Constants
+#
 
 target_folder = "DevPapers"
 
@@ -16,6 +16,42 @@ pattern_folder = "patterns"
 increase_pattern_file = "increase.ptns"
 decrease_pattern_file = "decrease.ptns"
 change_pattern_file = "change.ptns"
+
+coreNLPpath = os.path.join(os.getcwd(), "sfcnlp")
+
+
+#
+# Data structures
+#
+
+class Pattern:
+    def __init__(self, change_type, is_thing):
+        self.change_type = change_type
+        self.is_thing = is_thing
+        self.subpatterns = list()
+    def __repr__(self):
+        thingstring = "variable"
+        if self.is_thing: thingstring = "thing"
+        return "Pattern_"+self.change_type+"_"+thingstring+"_"+str(self.subpatterns)
+
+class Node:
+    def __init__(self, id, lemma):
+        self.id = id
+        self.lemma = lemma
+        self.inedges = []
+        self.outedges = []
+    def __repr__(self):
+        return str(self.id) + ":" + self.lemma
+        
+class Edge:
+    def __init__(self, to_id, from_id, dep):
+        self.to_id = to_id
+        self.from_id = from_id
+        self.dep = dep
+
+#
+# Main subroutines
+#
 
 def load_patterns():
     """
@@ -106,16 +142,100 @@ def load_patterns():
                     # Assuming that the entire pattern is accepted, add it to the pattern base
                     new_pattern.subpatterns = subpatterns
                     patterns[current_trigger].append(new_pattern)
-        
+        collections.defaultdict(list) 
     return patterns
 
-if __name__ == "__main__":
-    patterns = load_patterns()
-
-    # Do matching
-#    papers = [paper for paper in os.listdir(target_folder) if ".txt" in paper]
+def parse_papers():
+    parsed_files = [filename[:filename.index('.')]+".txt" for filename in os.listdir(target_folder) if '.xml' in filename]
+    filenames = [os.path.join(target_folder, filename) for filename in os.listdir(target_folder) if '.txt' in filename and not filename in parsed_files]
     
-#    for paper in papers:
-#        with open(os.path.join(target_folder, paper), 'r') as paperfile:
-#            for line in paperfile:
+    if not filenames: return
+    
+    with open(os.path.join(target_folder,"filelist.tmp"), 'w') as tmpfile:
+        for filename in filenames:
+            tmpfile.write(filename + "\n")
+    
+    subprocess.call(["java", "-cp", 
+          os.path.join(coreNLPpath, "stanford-corenlp-3.3.1.jar") + ":" + 
+          os.path.join(coreNLPpath, "stanford-corenlp-3.3.1-models.jar") + ":" + 
+          os.path.join(coreNLPpath, "xom.jar") + ":" + 
+          os.path.join(coreNLPpath, "joda-time.jar") + ":" + 
+          os.path.join(coreNLPpath, "jollyday.jar") + ":" + 
+          os.path.join(coreNLPpath, "ejml-0.23.jar"), 
+          "-Xmx3g","edu.stanford.nlp.pipeline.StanfordCoreNLP",
+          "-annotators", "tokenize,cleanxml,ssplit,pos,lcollections.defaultdict(list) emma,parse", "-ssplit.eolonly", "-newlineIsSentenceBreak"
+          "-outputExtension", ".xml", "-replaceExtension", "-outputDirectory", target_folder, 
+          "-filelist", os.path.join(target_folder, "filelist.tmp")])
+          
+    os.remove(os.path.join(target_folder,"filelist.tmp"))
+          
+
+def pattern_matching(pattern_base):
+    """
+        Perform pattern matching with provided pattern database
+    """
+    
+    papers = [os.path.join(target_folder, paper) for paper in os.listdir(target_folder) if ".xml" in paper]
+    
+    for paper in papers:
+        xml = ET.parse(paper)
+        
+        # For every sentence, build a graph and try pattern matching in the graph
+        for sentence in xml.iter('sentence'):
+            #            
+            # Graph building            
+            #
+            
+            # Indices for easy and quick access to ndoes, by lemma and by index
+            lemma_to_nodes_idx = collections.defaultdict(list)        
+            id_to_node_idx = {}       
+            # Build the nodes in the graph from tokens, remember to include a root node
+            root = Node("0", "ROOT")
+            id_to_node_idx["0"] = root
+            nodes = [root]
+            for token in sentence.iter('token'):
+                id = token.attrib['id']
+                lemma = token.find('lemma').text
+                node = Node(id, lemma)
+                nodes.append(node)
+                lemma_to_nodes_idx[lemma].append(node)
+                id_to_node_idx[id] = node
+            # Connect nodes by dependency edges
+            edges = []
+            for dependencies in sentence.iter('dependencies'):
+                # Use only the basic dependencies. Ignore the collapsed ones
+                if dependencies.attrib['type'] != "basic-dependencies":
+                    continue
+                # Build an edge for every dependency
+                for dep in dependencies.iter('dep'):
+                    dep_type = dep.attrib['type']
+                    from_id = dep.find('governor').attrib['idx']
+                    to_id = dep.find('dependent').attrib['idx']
+                    edge = Edge(to_id, from_id, dep_type)
+                    edges.append(edge)
+                    id_to_node_idx[from_id].outedges.append(edge)
+                    id_to_node_idx[to_id].inedges.append(edge)
+            
+            #
+            # Pattern matching
+            #
+            
+            # For each of the triggers, see if it is triggered by a lemma
+            for trigger in pattern_base:
+                if trigger in lemma_to_nodes_idx.keys():
+                    # If there is a trigger match, try to match each of the 
+                    # patterns of that trigger until one matches, or they all fail.
+                    for pattern in pattern_base[trigger]:
+                        print pattern
+        
+    
+
+if __name__ == "__main__":
+    print "Loading in and verifying patterns..."
+    patterns = load_patterns()
+    print "Linguistic preprocessing of papers..."
+    parse_papers()
+    print "Running pattern matching..."
+    pattern_matching(patterns)
+
                 
