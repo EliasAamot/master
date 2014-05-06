@@ -2,11 +2,8 @@
 """
 Script that automatically annotates papers according to the patterns given.
 
-
-TODO s:
-    1) Multiple subpatterns
-        a) positive
-        b) negative
+TODO :
+    negative patterns
 """
 import os, collections, subprocess
 import xml.etree.ElementTree as ET
@@ -274,8 +271,8 @@ def pattern_matching(pattern_base):
             # For each of the triggers, see if it is triggered by a lemma
             for trigger in pattern_base:
                 if trigger in lemma_to_nodes_idx.keys():
-                    # If there is a trigger match, try to match each of the 
-                    # patterns of that trigger until one matches, or they all fail.
+                    # If there is a trigger match, try to match each of the patterns 
+                    # TODO ? Only take the first one
                     for pattern in pattern_base[trigger]:
                         # Match all the subpatterns of a pattern to get a match.
                         # Because subpatterns share variables, all matches of a 
@@ -285,9 +282,31 @@ def pattern_matching(pattern_base):
                         
                         subpattern_matchings = []
                         if len(pattern.subpatterns) == 1:
-                            subpattern_matchings = subpattern_match(pattern, trigger, {}, lemma_to_nodes_idx, id_to_node_idx)
+                            subpattern_matchings = subpattern_match(pattern, lemma_to_nodes_idx, id_to_node_idx, pivot='T', pivot_phrase=trigger)
                         else:
                             assert len(pattern.subpatterns)==2, "A pattern needs to consist of one or two subpatterns. No more, no less. Sorry!"
+                            # First figure out which element is the unifying element for the two subpatterns
+                            join = set(pattern.subpatterns[0]).intersection(pattern.subpatterns[1])
+                            if 'T' in join:
+                                second_pivot = 'T'
+                            elif 'X' in join:
+                                second_pivot = 'X'
+                            elif 'N' in join:
+                                second_pivot = 'N'
+                            elif 'S' in join:
+                                second_pivot = 'S'
+                            else: 
+                                # Otherwise the pivot is the string element. Assuming that there is only one string element
+                                for j in join:
+                                    if j[0] == '"':
+                                        second_pivot = j[1:-1]
+                                        break
+                            
+                            # With two subpatterns, first generate all (globally partial) matches of first subpattern
+                            partial_matchings = subpattern_match(pattern, lemma_to_nodes_idx, id_to_node_idx, pivot='T', pivot_phrase=trigger, subpattern_number=0)
+                            # Then try to make matchings with the second pattern, constrained by the variable matchings given by each partial match
+                            for partial_matching in partial_matchings:
+                                subpattern_matchings.extend(subpattern_match(pattern, lemma_to_nodes_idx, id_to_node_idx, pivot=second_pivot, variable_assignment=partial_matching, subpattern_number=1))
                             
                             
                         # SEARCH IS COMPLETED, LET'S MAKE SOMETHING OUT OF IT!!!!
@@ -314,8 +333,6 @@ def pattern_matching(pattern_base):
                                     thing_var_type = "Thing"
                                 else:
                                     thing_var_type = "Variable"
-                                    
-                                print "Match details"
 
                                 # To find the word sequence for the theme, we use the
                                 # following heuristic: Take the longest continous strip
@@ -376,7 +393,7 @@ def pattern_matching(pattern_base):
             for annotation in annotator.annotations:
                 annfile.write(annotation+"\n")
                 
-def subpattern_match(pattern, trigger, variable_assignment, lemma_to_nodes_idx, id_to_node_idx):
+def subpattern_match(pattern, lemma_to_nodes_idx, id_to_node_idx, pivot='T', pivot_phrase=None, subpattern_number=0, variable_assignment={}):
      # Matching must be conducted as a search.
      # Search state data is :
          #  0) subpattern
@@ -391,21 +408,36 @@ def subpattern_match(pattern, trigger, variable_assignment, lemma_to_nodes_idx, 
      # pattern is fully matched downwards. Then 
      # matching is conducted upwards from T.
      
-     #TODO Variable assignment not used
+    assert pivot_phrase or variable_assignment, "You must specify either a pivot phrase or variable assignment to anchor pattern matching!"
                                 
     stack = []
-    # Create initial search states, one for each trigger word match
-    subpattern = pattern.subpatterns[0]
-    current_position = subpattern.index('T')
-    downwards_complete = False
-    trigger_nodes = lemma_to_nodes_idx[trigger]
-    for trigger_node in trigger_nodes:
+    # Create initial search state(s), 
+    # If pivot node is not given in variable_assignment, make one possible 
+    # pivot node for each maching of the pivot phrase
+    if pivot in variable_assignment:
+        subpattern = pattern.subpatterns[subpattern_number]
+        current_position = subpattern.index(pivot)
+        downwards_complete = False
+        pivot_node = variable_assignment[pivot]
         start_state = (subpattern,
                        current_position,
                        downwards_complete,
-                       trigger_node,
-                       {'T' : trigger_node})
+                       pivot_node,
+                       variable_assignment)
         stack.append(start_state)
+    else:
+        subpattern = pattern.subpatterns[subpattern_number]
+        current_position = subpattern.index(pivot)
+        downwards_complete = False
+        pivot_nodes = lemma_to_nodes_idx[pivot_phrase]
+        for pivot_node in pivot_nodes:
+            start_state = (subpattern,
+                           current_position,
+                           downwards_complete,
+                           pivot_node,
+                           {pivot : pivot_node})
+            stack.append(start_state)
+            
     assert stack
                             
     # Conduct BFS
@@ -442,6 +474,10 @@ def subpattern_match(pattern, trigger, variable_assignment, lemma_to_nodes_idx, 
             string_content = match_target[1:-1]
             if string_content == current_node.lemma:
                 # If the strings are consistent, store search state
+                # Store each string matching node to variable assignments as well. 
+                # Beacuse this is required if string matchings unify two subpatterns.
+                va = copy.deepcopy(variable_assignment)
+                va[current_node.lemma] = current_node
                 new_ss = (subpattern,
                           current_position,
                           downwards_complete,
