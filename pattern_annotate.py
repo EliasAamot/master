@@ -19,6 +19,7 @@ pattern_folder = "patterns"
 increase_pattern_file = "increase.ptns"
 decrease_pattern_file = "decrease.ptns"
 change_pattern_file = "change.ptns"
+neg_change_pattern_file = "neg_change.ptns"
 
 coreNLPpath = os.path.join(os.getcwd(), "sfcnlp")
 
@@ -30,6 +31,7 @@ coreNLPpath = os.path.join(os.getcwd(), "sfcnlp")
 class Pattern:
     def __init__(self, change_type, is_thing):
         self.change_type = change_type
+        self.is_negative = False
         self.is_thing = is_thing
         self.subpatterns = list()
     def __repr__(self):
@@ -82,12 +84,15 @@ class Annotator:
         self.annotations = []
         self.max_T_id = 0
         self.max_E_id = 0
+        self.max_A_id = 0
     def get_next_T(self):
         self.max_T_id += 1
         return self.max_T_id
     def get_next_E(self):
         self.max_E_id += 1
-        return self.max_E_id
+    def get_next_A(self):
+        self.max_A_id += 1
+        return self.max_A_id
     def add_annotation(self, annotation):
         self.annotations.append(annotation)
 
@@ -109,7 +114,8 @@ def load_patterns():
     # Pack up the filenames with the type patterns stored in there
     types_and_files = [("Increase", os.path.join(pattern_folder, increase_pattern_file)),
                        ("Decrease", os.path.join(pattern_folder, decrease_pattern_file)),
-                       ("Change", os.path.join(pattern_folder, change_pattern_file)) ]
+                       ("Change", os.path.join(pattern_folder, change_pattern_file)),
+                       ("NegChange", os.path.join(pattern_folder, neg_change_pattern_file))]
     
     # Read in the patterns
     for change_type, filename in types_and_files:
@@ -133,8 +139,15 @@ def load_patterns():
                     
                     # Build new pattern based on information given in script
                     new_pattern_is_thing = (split[0].upper() == "THN")
-                    new_pattern_change_type = change_type
+                    if change_type == "NegChange":
+                        new_pattern_change_type = "Change"
+                        is_negative = True
+                    else:
+                        new_pattern_change_type = change_type
+                        is_negative = False
+                        
                     new_pattern = Pattern(new_pattern_change_type, new_pattern_is_thing)
+                    new_pattern.is_negative = is_negative
                     
                     # Extract the subpatterns by splitting on semicolon
                     subpatterns_domain = split[1:]
@@ -381,9 +394,18 @@ def pattern_matching(pattern_base):
                                 type_id = etrigger_id
                                 theme_str = "Theme"
                                 theme_id = ttrigger_id
-                                    
+                                
                                 ann_str = event_id + "\t" + type_str+":"+type_id + " " + theme_str+":"+theme_id
                                 annotator.add_annotation(ann_str)
+                                    
+                                # If the event is negated, store that
+                                if sm.get('Negated'):
+                                    a_id = "A" + str(annotator.get_next_A())
+                                    a_str = "Negated"
+                                    e_id = event_id
+                                    
+                                    ann_str = a_id + "\t" + a_str + " " + e_id
+                                    annotator.add_annotation(ann_str)
                                     
         #
         #   When a paper has been successfully pattern matched, 
@@ -465,6 +487,7 @@ def subpattern_match(pattern, lemma_to_nodes_idx, id_to_node_idx, pivot='T', piv
 #                print "Complete match!"
                 variable_assignment['ChangeType'] = pattern.change_type
                 variable_assignment['IsThing'] = pattern.is_thing
+                variable_assignment['Negated'] = pattern.is_negative
                 subpattern_matchings.append(variable_assignment)
                 continue
         # Try to match next element
