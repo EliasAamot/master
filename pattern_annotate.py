@@ -90,6 +90,7 @@ class Annotator:
         return self.max_T_id
     def get_next_E(self):
         self.max_E_id += 1
+        return self.max_E_id
     def get_next_A(self):
         self.max_A_id += 1
         return self.max_A_id
@@ -219,7 +220,7 @@ def parse_papers():
           os.path.join(coreNLPpath, "jollyday.jar") + ":" + 
           os.path.join(coreNLPpath, "ejml-0.23.jar"), 
           "-Xmx3g","edu.stanford.nlp.pipeline.StanfordCoreNLP",
-          "-annotators", "tokenize,cleanxml,ssplit,pos,lcollections.defaultdict(list) emma,parse", "-ssplit.eolonly", "-newlineIsSentenceBreak"
+          "-annotators", "tokenize,cleanxml,ssplit,pos,lemma,parse", "-ssplit.eolonly", "-newlineIsSentenceBreak"
           "-outputExtension", ".xml", "-replaceExtension", "-outputDirectory", target_folder, 
           "-filelist", os.path.join(target_folder, "filelist.tmp")])
           
@@ -487,7 +488,7 @@ def subpattern_match(pattern, lemma_to_nodes_idx, id_to_node_idx, pivot='T', piv
 #                print "Complete match!"
                 variable_assignment['ChangeType'] = pattern.change_type
                 variable_assignment['IsThing'] = pattern.is_thing
-                variable_assignment['Negated'] = pattern.is_negative
+                variable_assignment['Negated'] = pattern.is_negative ^ check_for_grammatical_negation(variable_assignment['T'])
                 subpattern_matchings.append(variable_assignment)
                 continue
         # Try to match next element
@@ -561,7 +562,25 @@ def subpattern_match(pattern, lemma_to_nodes_idx, id_to_node_idx, pivot='T', piv
 #                        print "Non-match dep edge", inedge.dep, "vs", match_target
     
     return subpattern_matchings
-            
+
+def check_for_grammatical_negation(t_node):
+    """
+        Returns True if the trigger node is grammatically negated by a no or not.
+    """
+    
+    # Look for T det "no" pattern
+    det_edges = [edge for edge in t_node.outedges if edge.dep == 'det']
+    for det_edge in det_edges:
+        if det_edge.to_node.lemma == "no":
+            return True
+    
+    # Look for T neg pattern
+    neg_edges = [edge for edge in t_node.outedges if edge.dep == 'neg']
+    if neg_edges:
+        return True
+        
+    # If all patterns above fail, then we assume there is no negation
+    return False            
 
 if __name__ == "__main__":
     print "Loading in and verifying patterns..."

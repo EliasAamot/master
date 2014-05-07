@@ -30,7 +30,7 @@ def get_colour(start, end, anns):
     return colour
 
 if __name__=="__main__":
-    letsfind = ['on']    
+    letsfind = ['not']    
 
     files = ["NParses/" + filename for filename in os.listdir("NParses")]
     
@@ -60,7 +60,7 @@ if __name__=="__main__":
                     else:
                         dotstring += _word+_id+";\n"
                 # Build actual graph content
-                # iterate over the collapsed, ccprocessed dependences
+                # iterate over the basic dependecies
                 for dependency in sentence.iter('dependencies'):
                     if not dependency.attrib['type'] == "basic-dependencies":
                         continue
