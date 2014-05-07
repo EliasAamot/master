@@ -30,8 +30,8 @@ def get_colour(start, end, anns):
     return colour
 
 if __name__=="__main__":
-    letsfind = ['downscale']    
-    
+    letsfind = ['on']    
+
     files = ["NParses/" + filename for filename in os.listdir("NParses")]
     
     for filen in files:

@@ -158,13 +158,13 @@ def load_patterns():
                             if element[0] == '"' and element[-1] == '"':
                                 accept = True
                             # Element is accepted variable
-                            elif element in ['T', 'N', 'X', 'S']:
+                            elif element in ['T', 'N', 'X', 'Y', 'S']:
                                 accept = True
                             # Element is a dependency
                             elif element in ['prep', 'pobj', 'amod', 'nsubj', 'nsubjpass', 
                                              'dobj', 'nn', 'vmod', 'iobj', 'advmod', 'dep',
                                              'xcomp', 'aux', 'ccomp', 'rcmod', 'pcomp',
-                                             'appos', 'advcl', 'mark']:
+                                             'appos', 'advcl', 'mark', 'csubj']:
                                 accept = True
                             # Element is a negation
                             elif element == "!":
@@ -180,7 +180,7 @@ def load_patterns():
                             if element in ['N', 'S']:
                                 n_s_count += 1
                     assert t_count > 0, "There needs to be at least one occurence of the trigger word in a pattern!"
-                    assert n_s_count > 0, "There needs to be exactly one occurence of N or S in a pattern!"
+                    assert n_s_count > 0, "There needs to be at least one occurence of N or S in a pattern!"
                     
                     # Assuming that the entire pattern is accepted, add it to the pattern base
                     new_pattern.subpatterns = subpatterns
@@ -457,7 +457,7 @@ def subpattern_match(pattern, lemma_to_nodes_idx, id_to_node_idx, pivot='T', piv
             current_position += 1
             if current_position == len(cur_subpattern):
                 downwards_complete = True
-                current_position = cur_subpattern.index('T')
+                current_position = cur_subpattern.index(pivot)
         if downwards_complete:
             current_position -= 1
             if current_position < 0:
@@ -545,7 +545,7 @@ if __name__ == "__main__":
     patterns = load_patterns()
     print "Linguistic preprocessing of papers..."
     parse_papers()
-    print "Running pattern matching...\n\n"
+    print "Running pattern matching..."
     pattern_matching(patterns)
 
                 
