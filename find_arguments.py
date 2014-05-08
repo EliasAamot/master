@@ -30,7 +30,7 @@ def get_colour(start, end, anns):
     return colour
 
 if __name__=="__main__":
-    letsfind = ['not']    
+    letsfind = ['highest']    
 
     files = ["NParses/" + filename for filename in os.listdir("NParses")]
     
