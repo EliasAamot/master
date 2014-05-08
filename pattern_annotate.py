@@ -21,6 +21,9 @@ decrease_pattern_file = "decrease.ptns"
 change_pattern_file = "change.ptns"
 neg_change_pattern_file = "neg_change.ptns"
 
+cause_pattern_file = "cause.ptns"
+correlate_pattern_file = "correlate.ptns"
+
 coreNLPpath = os.path.join(os.getcwd(), "sfcnlp")
 
 
@@ -53,6 +56,8 @@ class SurfacePattern:
         self.agent_element = agent_element
         self.is_negative = False
         self.subpatterns = []
+    def __repr__(self):
+        return "SurfacePattern:A({0}):Neg({1}):".format(str(self.agent_element),str(self.is_negative))+str(self.subpatterns)
 
 class Node:
     def __init__(self, id, lemma, start, end):
@@ -128,10 +133,10 @@ def load_event_patterns():
     current_trigger = None
     
     # Pack up the filenames with the type patterns stored in there
-    types_and_files = [("Increase", os.path.join(pattern_folder, increase_pattern_file)),
+    types_and_files = (("Increase", os.path.join(pattern_folder, increase_pattern_file)),
                        ("Decrease", os.path.join(pattern_folder, decrease_pattern_file)),
                        ("Change", os.path.join(pattern_folder, change_pattern_file)),
-                       ("NegChange", os.path.join(pattern_folder, neg_change_pattern_file))]
+                       ("NegChange", os.path.join(pattern_folder, neg_change_pattern_file)))
     
     # Read in the patterns
     for change_type, filename in types_and_files:
@@ -217,6 +222,44 @@ def load_event_patterns():
         collections.defaultdict(list) 
     return patterns
 
+def load_cc_patterns():
+    # Pack up filenames with type
+    files = (os.path.join(pattern_folder, cause_pattern_file), os.path.join(pattern_folder, correlate_pattern_file))
+    
+    patterns = []    
+    
+    for filename in files:
+        with open(filename, 'r') as filee:
+            
+            current_pattern = None
+
+            for line in filee:
+                split = line.strip().split()
+                # Skip comments and empty lines
+                if not len(split): continue
+                if split[0][0] == '#': continue
+                
+                if split[0] == "TRIGGER":
+                    # Store old pattern
+                    if current_pattern:
+                        patterns.append(current_pattern)    
+                    # Find the agentivity of the trigger
+                    if split[-1] == "1": agent = 1
+                    elif split[-1] == "2": agent = 2
+                    else: agent = 0
+                    # Create a new pattern
+                    current_pattern = SurfacePattern(agent)
+                    if "neg" in split:
+                        current_pattern.is_negative = True
+                
+                elif split[0].upper() in ['BETWEEN', 'AFTER', 'BEFORE']:
+                    subpattern = (split[0], ' '.join(split[1:]).strip())
+                    current_pattern.subpatterns.append(subpattern)
+                else:
+                    raise Exception, "Keyword not recongnized: "+split[0]
+                    
+    return patterns
+
 def parse_papers():
     parsed_files = [filename[:filename.index('.')]+".txt" for filename in os.listdir(target_folder) if '.xml' in filename]
     filenames = [os.path.join(target_folder, filename) for filename in os.listdir(target_folder) if '.txt' in filename and not filename in parsed_files]
@@ -242,7 +285,7 @@ def parse_papers():
     os.remove(os.path.join(target_folder,"filelist.tmp"))
           
 
-def pattern_matching(pattern_base):
+def pattern_matching(pattern_base, cc_pattern_base):
     """
         Main method for pattern matching. Calls the submethods in the pipeline,
         detecting first change events, then causes and correlations.
@@ -253,7 +296,7 @@ def pattern_matching(pattern_base):
         paper_text = open(paper[:paper.index('.')]+".txt", 'r').read()
         
         annotator = detect_change_events(paper, pattern_base, paper_text)        
-        annotator = detect_cause_correlation(paper_text, annotator)
+        annotator = detect_cause_correlation(paper_text, cc_pattern_base, annotator)
         
         # Write the annotations to file
         with open(paper[:paper.index('.')]+".ann", 'w') as annfile:
@@ -605,7 +648,7 @@ def check_for_grammatical_negation(t_node):
     # If all patterns above fail, then we assume there is no negation
     return False      
 
-def detect_cause_correlation(paper_text, annotator):
+def detect_cause_correlation(paper_text, pattern_base, annotator):
     # Detection runs on each line
 
     for line in paper_text.split("\n"):
@@ -634,24 +677,49 @@ def detect_cause_correlation(paper_text, annotator):
             between = line[between_start:between_end]
             before = line[:between_start]
             after = line[between_end:]
-            # Why have we not developed the triggers yet?
-            print line
-            print "Before:", before
-            print "Between:", between
-            print "After:", after
-            print
             
-    exit()
+            # Now try to match all the patterns. A pattern only matches if every
+            # subpattern matches
+            for pattern in pattern_base:
+                full_match = True
+                for matching_location, string in pattern.subpatterns:
+                    if matching_location == "BEFORE":
+                        full_match = full_match and string in before
+                    elif matching_location == "AFTER":
+                        full_match = full_match and string in after
+                    elif matching_location == "BETWEEN":
+                        full_match = full_match and string in between
+                    else: 
+                        raise Exception, matching_location + " is not a valid matching location!"
+                if full_match:
+                    # Store the annotation
+                    
+                    # Trigger
+                    trigger_id = "T"+str(annotator.get_next_T())
+                    if pattern.agent_element > 0: trigger_type = "Cause"
+                    else: trigger_type = "Correlate"
+                    trigger_start = str(0) #TODO
+                    trigger_end = str(0) # TODO
+                    trigger_str = "" #TODO
+                    
+                    ann_str = trigger_id+"\t"+trigger_type+" "+trigger_start+" "+trigger_end+"\t"+trigger_str
+                    annotator.add_annotation(ann_str)
+                    
+                    # Event
+                    # TODO
+                    
+                    # Negation
+                    # TODO
     
     return annotator      
 
 if __name__ == "__main__":
     print "Loading in and verifying patterns..."
     event_patterns = load_event_patterns()
-    
+    cc_patterns = load_cc_patterns()
     print "Linguistic preprocessing of papers..."
     parse_papers()
     print "Running pattern matching..."
-    pattern_matching(event_patterns)
+    pattern_matching(event_patterns, cc_patterns)
     
                 
