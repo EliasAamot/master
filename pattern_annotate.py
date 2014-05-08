@@ -56,6 +56,7 @@ class SurfacePattern:
         self.agent_element = agent_element
         self.is_negative = False
         self.subpatterns = []
+        self.main_trigger = None
     def __repr__(self):
         return "SurfacePattern:A({0}):Neg({1}):".format(str(self.agent_element),str(self.is_negative))+str(self.subpatterns)
 
@@ -255,6 +256,10 @@ def load_cc_patterns():
                 elif split[0].upper() in ['BETWEEN', 'AFTER', 'BEFORE']:
                     subpattern = (split[0], ' '.join(split[1:]).strip())
                     current_pattern.subpatterns.append(subpattern)
+                    # If this is the first subpattern, store it as the main
+                    # trigger, so we know which span to annotate
+                    if current_pattern.main_trigger == None:
+                        current_pattern.main_trigger = subpattern
                 else:
                     raise Exception, "Keyword not recongnized: "+split[0]
                     
@@ -684,11 +689,11 @@ def detect_cause_correlation(paper_text, pattern_base, annotator):
                 full_match = True
                 for matching_location, string in pattern.subpatterns:
                     if matching_location == "BEFORE":
-                        full_match = full_match and string in before
+                        full_match = full_match and string in before.lower()
                     elif matching_location == "AFTER":
-                        full_match = full_match and string in after
+                        full_match = full_match and string in after.lower()
                     elif matching_location == "BETWEEN":
-                        full_match = full_match and string in between
+                        full_match = full_match and string in between.lower()
                     else: 
                         raise Exception, matching_location + " is not a valid matching location!"
                 if full_match:
@@ -698,11 +703,30 @@ def detect_cause_correlation(paper_text, pattern_base, annotator):
                     trigger_id = "T"+str(annotator.get_next_T())
                     if pattern.agent_element > 0: trigger_type = "Cause"
                     else: trigger_type = "Correlate"
-                    trigger_start = str(0) #TODO
-                    trigger_end = str(0) # TODO
-                    trigger_str = "" #TODO
                     
-                    ann_str = trigger_id+"\t"+trigger_type+" "+trigger_start+" "+trigger_end+"\t"+trigger_str
+                    # Use pattern.main_trigger to find start, end and string of annotated span
+                    main_location, main_string = pattern.main_trigger
+                    if main_location == "BETWEEN":
+                        trigger_start = between.lower().index(main_string) + int(pair[0][1])+1
+                        trigger_end = trigger_start + len(main_string)
+                        trigger_str = paper_text[trigger_start:trigger_end]
+                        assert trigger_str.lower() == main_string
+                    elif main_location == "AFTER":
+                        # This code has not been verified, as there are no such patterns
+                        trigger_start = after.lower().index(main_string) + int(pair[1][0])
+                        trigger_end = trigger_start + len(main_string)
+                        trigger_str = paper_text[trigger_start:trigger_end]
+                        assert trigger_str.lower() == main_string
+                        # TO HERE
+                    elif main_location == "BEFORE":
+                        trigger_start = before.lower().index(main_string) + line_start
+                        trigger_end = trigger_start + len(main_string)
+                        trigger_str = paper_text[trigger_start:trigger_end]
+                        assert trigger_str.lower() == main_string
+                    else: 
+                        raise Exception, str(pattern.main_trigger) + " is not a valid main trigger!"
+                    
+                    ann_str = trigger_id+"\t"+trigger_type+" "+str(trigger_start)+" "+str(trigger_end)+"\t"+trigger_str
                     annotator.add_annotation(ann_str)
                     
                     # Event
