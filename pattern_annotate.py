@@ -7,7 +7,7 @@ TODO :
 """
 import os, collections, subprocess
 import xml.etree.ElementTree as ET
-import copy
+import copy, re
 
 #
 # Constants
@@ -106,6 +106,8 @@ class Annotator:
         self.max_T_id = 0
         self.max_E_id = 0
         self.max_A_id = 0
+        self.T_to_E_idx = {}
+        self.id_to_T_idx = {}
     def get_next_T(self):
         self.max_T_id += 1
         return self.max_T_id
@@ -254,7 +256,7 @@ def load_cc_patterns():
                         current_pattern.is_negative = True
                 
                 elif split[0].upper() in ['BETWEEN', 'AFTER', 'BEFORE']:
-                    subpattern = (split[0], ' '.join(split[1:]).strip())
+                    subpattern = (split[0], ' '.join(split[1:]))
                     current_pattern.subpatterns.append(subpattern)
                     # If this is the first subpattern, store it as the main
                     # trigger, so we know which span to annotate
@@ -455,6 +457,7 @@ def detect_change_events(paper, pattern_base, paper_text):
                                 
                             ann_str = "\t".join([ttrigger_id, type_str+" "+start_off+" "+end_off, trigger_str]).strip("\t")
                             annotator.add_annotation(ann_str)
+                            annotator.id_to_T_idx[ttrigger_id] = ann_str
                                 
                             # Then to find the trigger annotation of the event
                             etrigger_id = "T" + str(annotator.get_next_T())
@@ -465,6 +468,7 @@ def detect_change_events(paper, pattern_base, paper_text):
                                 
                             ann_str = "\t".join([etrigger_id, etype_str+" "+start_off+" "+end_off, trigger_str]).strip("\t")
                             annotator.add_annotation(ann_str)
+                            annotator.id_to_T_idx[etrigger_id] = ann_str
                                 
                             # ...and the event annotation of the event
                             event_id = "E" + str(annotator.get_next_E())
@@ -475,6 +479,8 @@ def detect_change_events(paper, pattern_base, paper_text):
                             
                             ann_str = event_id + "\t" + type_str+":"+type_id + " " + theme_str+":"+theme_id
                             annotator.add_annotation(ann_str)
+                            annotator.T_to_E_idx[type_id] = event_id
+                            annotator.id_to_T_idx[event_id] = ann_str
                                 
                             # If the event is negated, store that
                             if sm.get('Negated'):
@@ -665,11 +671,21 @@ def detect_cause_correlation(paper_text, pattern_base, annotator):
         triggers_in_line = []
         for a in annotator.annotations:
             if a[0] == "T":
-                _, mid, _ = a.split("\t")
+                idd, mid, eee = a.split("\t")
                 e_type, e_start, e_end = mid.split()
-                
                 if e_type in ['Change', 'Increase', 'Decrease'] and int(e_start) >= line_start and int(e_end) <= line_end:
-                    triggers_in_line.append((e_start, e_end))
+                    # Find the boundaires of the corresponding theme
+                    eid = annotator.T_to_E_idx[idd]
+                    event_ann = annotator.id_to_T_idx[eid]
+                    tid = event_ann[event_ann.rindex(':')+1:]
+                    t_ann = annotator.id_to_T_idx[tid]
+                    _, tmid, tee = t_ann.split("\t")
+                    t_type, t_start, t_end = tmid.split()
+    
+                    chunk_start = min([int(e_start), int(t_start)])
+                    chunk_end = max([int(e_end), int(t_end)])                    
+                    
+                    triggers_in_line.append((chunk_start, chunk_end, idd, eee, tee))
         
         if not triggers_in_line: continue
         triggers_in_line = sorted(triggers_in_line, key=lambda v : v[0])
@@ -677,25 +693,58 @@ def detect_cause_correlation(paper_text, pattern_base, annotator):
         
         # Look for triggers of causes or correlations between the pairs
         for pair in pairs_of_subsequent_events:
-            between_start = int(pair[0][1])+1 - line_start
-            between_end = int(pair[1][0]) - line_start
-            between = line[between_start:between_end]
-            before = line[:between_start]
-            after = line[between_end:]
+            chunk_1_start = pair[0][0]
+            chunk_1_end = pair[0][1]
+            chunk_2_start = pair[1][0]
+            chunk_2_end = pair[1][1]
             
-            # Now try to match all the patterns. A pattern only matches if every
-            # subpattern matches
+            between_start = chunk_1_end + 1
+            between_end = chunk_2_start
+            
+            before_start = line_start
+            before_end = chunk_1_start
+            
+            after_start = chunk_2_end + 1
+            after_end = line_start + len(line)
+            
+            before_un = paper_text[before_start:before_end]
+            between_un = paper_text[between_start:between_end]
+            after_un = paper_text[after_start:after_end]
+            
+            before = normalize(before_un)
+            between = normalize(between_un)
+            after = normalize(after_un)
+            
+            # Now, check every pattern to see if it matches
             for pattern in pattern_base:
+                # First match the main trigger to get a lower bound for the index
+                matching_location, string = pattern.main_trigger
+                if matching_location == "BEFORE":
+                    lbi = is_a_match(string, before)
+                elif matching_location == "AFTER":
+                    lbi = is_a_match(string, after)
+                elif matching_location == "BETWEEN":
+                    lbi = is_a_match(string, between)
+                else: 
+                    raise Exception, matching_location + " is not a valid matching location!"
+                
+                # If the core trigger is not matched, then there is no point in
+                # checking the other subpatterns
+                if not lbi:
+                    continue
+                
+                # If the core trigger is matched, check all other triggers
                 full_match = True
                 for matching_location, string in pattern.subpatterns:
                     if matching_location == "BEFORE":
-                        full_match = full_match and string in before.lower()
+                        full_match = full_match and is_a_match(string, before)
                     elif matching_location == "AFTER":
-                        full_match = full_match and string in after.lower()
+                        full_match = full_match and is_a_match(string, after)
                     elif matching_location == "BETWEEN":
-                        full_match = full_match and string in between.lower()
+                        full_match = full_match and is_a_match(string, between)
                     else: 
                         raise Exception, matching_location + " is not a valid matching location!"
+                        
                 if full_match:
                     # Store the annotation
                     
@@ -706,20 +755,22 @@ def detect_cause_correlation(paper_text, pattern_base, annotator):
                     
                     # Use pattern.main_trigger to find start, end and string of annotated span
                     main_location, main_string = pattern.main_trigger
+
                     if main_location == "BETWEEN":
-                        trigger_start = between.lower().index(main_string) + int(pair[0][1])+1
+                        possible_substring = between_un[lbi:]
+                        trigger_start = possible_substring.index(main_string) + between_start + lbi
+                        trigger_end = trigger_start + len(main_string)
+                        trigger_str = paper_text[trigger_start:trigger_end]
+                        assert trigger_str.lower() == main_string
+                    elif main_location == "BEFORE":
+                        possible_substring = before_un[lbi:]
+                        trigger_start = possible_substring.index(main_string) + before_start + lbi
                         trigger_end = trigger_start + len(main_string)
                         trigger_str = paper_text[trigger_start:trigger_end]
                         assert trigger_str.lower() == main_string
                     elif main_location == "AFTER":
-                        # This code has not been verified, as there are no such patterns
-                        trigger_start = after.lower().index(main_string) + int(pair[1][0])
-                        trigger_end = trigger_start + len(main_string)
-                        trigger_str = paper_text[trigger_start:trigger_end]
-                        assert trigger_str.lower() == main_string
-                        # TO HERE
-                    elif main_location == "BEFORE":
-                        trigger_start = before.lower().index(main_string) + line_start
+                        possible_substring = after_un[lbi:]
+                        trigger_start = possible_substring.index(main_string) + after_start + lbi
                         trigger_end = trigger_start + len(main_string)
                         trigger_str = paper_text[trigger_start:trigger_end]
                         assert trigger_str.lower() == main_string
@@ -730,12 +781,57 @@ def detect_cause_correlation(paper_text, pattern_base, annotator):
                     annotator.add_annotation(ann_str)
                     
                     # Event
-                    # TODO
+                    event_id = "E"+str(annotator.get_next_E())
+                    
+                    main_type = trigger_type
+                    main_id = trigger_id
+                    main_str = main_type+":"+main_id
+                    
+                    if pattern.agent_element == 1:
+                        theme_part = pair[1]
+                        core_part = pair[0]
+                    else:
+                        theme_part = pair[0]
+                        core_part = pair[1]
+                    
+                    theme_type = "Theme"
+                    theme_id = annotator.T_to_E_idx[theme_part[2]]
+                    theme_str = theme_type+":"+theme_id
+                    
+                    if pattern.agent_element > 0: argument_type = "Agent"
+                    else: argument_type = "Co-theme"
+                    argument_id = annotator.T_to_E_idx[core_part[2]]
+                    argument_str = argument_type+":"+argument_id
+                    
+                    ann_str = event_id+"\t"+main_str+" "+argument_str+" "+theme_str
+                    annotator.add_annotation(ann_str)
                     
                     # Negation
                     # TODO
     
     return annotator      
+
+def normalize(string):
+    string = string.lower()
+    string = re.sub("[^a-z ]", "", string)
+    return string.split()
+    
+def is_a_match(string, liste):
+    small_list = string.split()
+    try: 
+        first_index = liste.index(small_list[0])
+        last_index = first_index
+        for element in small_list[1:]:
+            hits = [i for i in xrange(len(liste)) if liste[i] == element]
+            if (last_index+1) in hits:
+                last_index += 1
+            else:
+                return False
+        # Find the lower bound for the index provided by its location
+        minimal_string = ' '.join(liste[:first_index])
+        return len(minimal_string)
+    except ValueError:
+        return False
 
 if __name__ == "__main__":
     print "Loading in and verifying patterns..."
@@ -744,6 +840,4 @@ if __name__ == "__main__":
     print "Linguistic preprocessing of papers..."
     parse_papers()
     print "Running pattern matching..."
-    pattern_matching(event_patterns, cc_patterns)
-    
-                
+    pattern_matching(event_patterns, cc_patterns)         
