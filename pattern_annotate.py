@@ -727,26 +727,26 @@ def detect_cause_correlation(paper_text, pattern_base, annotator):
                     lbi = is_a_match(string, between)
                 else: 
                     raise Exception, matching_location + " is not a valid matching location!"
-                
                 # If the core trigger is not matched, then there is no point in
                 # checking the other subpatterns
-                if not lbi:
+                if lbi == -1:
                     continue
                 
                 # If the core trigger is matched, check all other triggers
                 full_match = True
                 for matching_location, string in pattern.subpatterns:
                     if matching_location == "BEFORE":
-                        full_match = full_match and is_a_match(string, before)
+                        full_match = full_match and is_a_match(string, before) >= 0
                     elif matching_location == "AFTER":
-                        full_match = full_match and is_a_match(string, after)
+                        full_match = full_match and is_a_match(string, after) >= 0
                     elif matching_location == "BETWEEN":
-                        full_match = full_match and is_a_match(string, between)
+                        full_match = full_match and is_a_match(string, between) >= 0
                     else: 
                         raise Exception, matching_location + " is not a valid matching location!"
-                        
+
                 if full_match:
                     # Store the annotation
+                    print lbi
                     
                     # Trigger
                     trigger_id = "T"+str(annotator.get_next_T())
@@ -757,19 +757,19 @@ def detect_cause_correlation(paper_text, pattern_base, annotator):
                     main_location, main_string = pattern.main_trigger
 
                     if main_location == "BETWEEN":
-                        possible_substring = between_un[lbi:]
+                        possible_substring = between_un[lbi:].lower()
                         trigger_start = possible_substring.index(main_string) + between_start + lbi
                         trigger_end = trigger_start + len(main_string)
                         trigger_str = paper_text[trigger_start:trigger_end]
                         assert trigger_str.lower() == main_string
                     elif main_location == "BEFORE":
-                        possible_substring = before_un[lbi:]
+                        possible_substring = before_un[lbi:].lower()
                         trigger_start = possible_substring.index(main_string) + before_start + lbi
                         trigger_end = trigger_start + len(main_string)
                         trigger_str = paper_text[trigger_start:trigger_end]
                         assert trigger_str.lower() == main_string
                     elif main_location == "AFTER":
-                        possible_substring = after_un[lbi:]
+                        possible_substring = after_un[lbi:].lower()
                         trigger_start = possible_substring.index(main_string) + after_start + lbi
                         trigger_end = trigger_start + len(main_string)
                         trigger_str = paper_text[trigger_start:trigger_end]
@@ -826,12 +826,12 @@ def is_a_match(string, liste):
             if (last_index+1) in hits:
                 last_index += 1
             else:
-                return False
+                return -1
         # Find the lower bound for the index provided by its location
         minimal_string = ' '.join(liste[:first_index])
         return len(minimal_string)
     except ValueError:
-        return False
+        return -1
 
 if __name__ == "__main__":
     print "Loading in and verifying patterns..."
