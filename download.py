@@ -21,4 +21,4 @@ for id in ids:
     if os.path.exists(path):
         pass
     else:
-        fetcher.get_abstract_for_id(id)
+        fetcher.get_abstracts_for_id(id)

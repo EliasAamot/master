@@ -97,7 +97,7 @@ def get_ids_for_keyword(keyword, access_token):
     return ids
 
 def get_abstract_for_id(theid, access_token):
-    path = 'Papers/'+theid+'.txt'
+    path = 'Data/'+theid+'.txt'
     try: 
         with open(path, 'r') as file:
             xml = file.read()
