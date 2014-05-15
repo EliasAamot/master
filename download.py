@@ -9,7 +9,9 @@ import time, os.path
 import medeley_fetch
 import regex
 
-ids = medeley_fetch.get_ids_for_keyword('primary production')
+fetcher = medeley_fetch.Fetcher()
+
+ids = fetcher.get_ids_for_keyword('primary production')
 
 for id in ids:
     print id
@@ -19,4 +21,4 @@ for id in ids:
     if os.path.exists(path):
         pass
     else:
-        medeley_fetch.get_abstract_for_id(id)
+        fetcher.get_abstract_for_id(id)
