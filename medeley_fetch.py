@@ -5,18 +5,21 @@ Methods for gathering medline papers based keywords or ids.
 @author: elias
 """
 from regex import *
-import urllib2, json
-import nlp
+import urllib, urllib2, json
 
-CONSUMER_KEY = "939b208ebeea32b816da61a1bce7de4605278cbae"
-AUTH = "/?consumer_key=" + CONSUMER_KEY
+#CONSUMER_KEY = "939b208ebeea32b816da61a1bce7de4605278cbae"
+#AUTH = "/?consumer_key=" + CONSUMER_KEY
 
-SEARCH_BASE_URL = "http://api.mendeley.com/oapi/documents/search/"
-DETAIL_BASE_URL = "http://api.mendeley.com/oapi/documents/details/"
+#SEARCH_BASE_URL = "http://api.mendeley.com/oapi/documents/search/"
+SEARCH_BASE_URL = "https://api-oauth2.mendeley.com/oapi/documents/search/"
+#DETAIL_BASE_URL = "http://api.mendeley.com/oapi/documents/details/"
+DETAIL_BASE_URL = "https://api-oauth2.mendeley.com/oapi/documents/details/"
 
-BASE_URL = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 MAX_PATH_LENGTH = 255
 FOLDER_NAME_LENGTH = 5 # len("Data/")
+
+def get_auth_string(access_token):
+    return "/?access_token=" + access_token
 
 def fix_length(path):
     """
@@ -29,7 +32,7 @@ def fix_length(path):
     return path
     
 
-def get_count_for_keyword(keyword):
+def get_count_for_keyword(keyword, access_token):
     keyword_path = path_normalize(keyword)
     path = 'Counts/'+keyword_path+'.cnt'
     path = fix_length(path)
@@ -42,7 +45,8 @@ def get_count_for_keyword(keyword):
         while not done:
             try:
                 search_query = urllib2.quote("title:"+keyword) 
-                url = SEARCH_BASE_URL + search_query + AUTH
+                url = SEARCH_BASE_URL + search_query + get_auth_string(access_token)
+                print url
                 xml_dict = json.loads(urllib2.urlopen(url).read())
                 count = xml_dict['total_results']
                 if count == None:
@@ -59,7 +63,7 @@ def get_count_for_keyword(keyword):
             file.write(str(count) + "\n")
     return count
         
-def get_ids_for_keyword(keyword):
+def get_ids_for_keyword(keyword, access_token):
     keyword_path = path_normalize(keyword)
     path = 'IDs/'+keyword_path+'.ids'
     path = fix_length(path)
@@ -74,7 +78,7 @@ def get_ids_for_keyword(keyword):
         while not done:
             try:
                 search_query = urllib2.quote('"'+keyword+'"') 
-                url = SEARCH_BASE_URL + search_query + AUTH + "&page=" + str(current_page) + "&items=100"
+                url = SEARCH_BASE_URL + search_query + get_auth_string(access_token) + "&page=" + str(current_page) + "&items=100"
                 xml_dict = json.loads(urllib2.urlopen(url).read())
                 ids.extend([document['uuid'] for document in xml_dict['documents']])                
                 current_page += 1
@@ -92,7 +96,7 @@ def get_ids_for_keyword(keyword):
                 file.write(id + "\n")
     return ids
 
-def get_abstract_for_id(theid):
+def get_abstract_for_id(theid, access_token):
     path = 'Papers/'+theid+'.txt'
     try: 
         with open(path, 'r') as file:
@@ -103,8 +107,9 @@ def get_abstract_for_id(theid):
         while not fetched:
             try:
                 search_query = theid
-                url = DETAIL_BASE_URL + search_query + AUTH
+                url = DETAIL_BASE_URL + search_query + get_auth_string(access_token)
                 xml = urllib2.urlopen(url).read()
+                time.sleep(8)
                 fetched = True
             except Exception as e:
                 if '429' in str(e):
@@ -123,6 +128,53 @@ def get_abstract_for_id(theid):
     except AttributeError:
         print xml_dict
 
+import time
+
+class Fetcher:
+    """
+        An object is used for convenience to keep track of authentication,
+        and time whether a new access token is required. 
+    """
+    def __init__(self):
+        self.access_token = None
+        self.access_expires = time.time()-1
+        
+    def get_access_token(self):
+        if time.time() > self.access_expires:
+            self._get_new_access_token()
+        return self.access_token
+        
+    def get_long_access_token(self):
+        # Use this to force the access token to be valid for at least 10 minutes
+        if time.time() + 600000 > self.access_expires:
+            self._get_new_access_token()
+        return self.access_token
+
+    def _get_new_access_token(self):
+        url = 'https://api-oauth2.mendeley.com/oauth/token'
+        values = {'client_id' : '143',
+                  'client_secret' : 'J6s8!!VYae{0$lD2',
+                  'grant_type':'client_credentials', }
+        data = urllib.urlencode(values)
+        req = urllib2.Request(url, data)
+        response = urllib2.urlopen(req)
+        xml = json.loads(response.read())
+        
+        self.access_token = xml['access_token']
+        self.access_expires = time.time() + (xml['expires_in']*1000) - 5000    
+        # -5000 to ensure that the token does not expire even counting some delay
+        
+    def get_abstracts_for_id(self, theid):
+        return get_abstract_for_id(theid, self.get_access_token())
+        
+    def get_ids_for_keyword(self, keyword):
+        return get_ids_for_keyword(keyword, self.get_long_access_token())
+        
+    def get_count_for_keyword(self, keyword):
+        return get_count_for_keyword(keyword, self.get_access_token())
+                
+
 if __name__=="__main__":
     pass
+
     
