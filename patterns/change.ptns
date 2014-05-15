@@ -1,0 +1,172 @@
+TRIGGER respond
+VAR T nsubj S
+# Data shows 1 var, 1 thn, 1 cause/corr
+
+#TRIGGER equally
+#VAR N amod T
+# Possibly weak
+
+TRIGGER regulate
+VAR T nsubjpass S
+VAR T dobj S
+VAR N vmod T
+THN N amod T 
+# Possibly weak
+THN T xcomp S
+#THN X advmod T ; X nsubjpass S
+# Not attested, but the example below is just a special case of this
+THN X advmod Y dep T ; X nsubjpass S  
+# X regulated by Y is a cause pattern
+
+TRIGGER impact
+VAR T dobj S
+# Weak ~50 %
+
+TRIGGER trend
+VAR X dobj T ; X prep "in" pobj S
+# No negex in data, but seems risky
+
+TRIGGER redirect
+VAR T dobj S
+
+TRIGGER influence
+VAR T prep "of" pobj S prep "on"
+VAR T prep "of" pobj S ; T prep "on" pobj
+# At the moment these overlap...
+# Also quite weak, can absolutely not be reduced to T prep "of" pobj S
+#VAR T dobj S
+# Very weak
+VAR T prep "on" pobj S
+# Quite weak
+
+TRIGGER adjust
+VAR T nsubjpass S
+# No negex, by might be weak due to lack of data
+
+TRIGGER modulate
+VAR T prep "by" pobj S
+VAR T nsubjpass S
+# These two have a not-so-nice double application in passives
+# And are problematic
+# MAybe rewrite this to include a "by" rule
+
+TRIGGER affect
+VAR T nsubjpass S
+VAR T dobj S
+# Both also weak
+
+TRIGGER altered
+VAR N amod T
+
+TRIGGER alter
+VAR T dobj S
+#VAR T nsubjpass S
+# Could have appeared in the data, but didn't
+
+#TRIGGER availability
+#VAR T nn S
+# Attested in data, but most likely due to sub-optimal analysis of "modulated by" construction
+# Causes a million negexi
+
+TRIGGER different
+VAR T nsubj S
+# Kind of weak
+#VAR N amod T
+# Extremely weak
+
+TRIGGER feedback-interaction
+VAR X prep "from" pobj T ; X prep "with" pobj S
+
+TRIGGER to
+VAR "response" prep "of" pobj X vmod Y prep T pobj S
+VAR "response" prep "of" pobj X prep T pobj S
+# No attested in data, but the above is a special case 
+
+TRIGGER reconstellation
+VAR T prep "of" pobj S
+
+TRIGGER vary
+VAR T nsubj S
+
+TRIGGER shift
+VAR T prep "in" pobj S
+
+TRIGGER regulation
+THN T prep "of" pobj S
+
+TRIGGER variability
+VAR T prep "in" pobj S
+VAR T prep "of" pobj S
+
+TRIGGER fluctuate
+VAR N amod T
+# Not attested due to problematic parsing
+
+TRIGGER response
+VAR T nn S
+VAR T prep "of" pobj S
+VAR T amod S
+# Might be weak
+VAR T nsubj S
+
+#TRIGGER both
+#VAR N det T
+#Weak, unless filter is implemented
+
+# Can't handle dependent
+
+TRIGGER difference
+VAR T prep "in" pobj S
+
+TRIGGER effect
+VAR T prep "on" pobj S
+# The problematic "effect of X on Y" cases below. 
+VAR T prep "of" pobj S ; T prep "on"
+VAR X dobj T prep "of" pobj S ; X prep "on"
+VAR T prep "of" pobj S prep "on"
+VAR N nn T ; N rcmod X prep "on"
+#See also TRIGGER on
+# Possibly weak
+VAR X dobj T ; X nsubj S
+
+TRIGGER on
+VAR X prep T pobj S ; X dobj "effect" prep "of"
+VAR X rcmod Y prep T pobj S ; X nn "effect"
+VAR "effect" prep "of" pobj X prep T pobj S
+VAR "have" dobj "effect" prep T pobj S
+VAR "influence" prep "of" pobj X prep T pobj S
+
+TRIGGER variation
+VAR T prep "in" pobj S
+VAR T prep "of" pobj S
+
+TRIGGER offset
+VAR N amod T
+# Not attested due to problematic parsing
+
+TRIGGER change
+VAR T prep "in" pobj S
+VAR X nsubj T ; X prep "in" pobj S
+VAR T nsubj S
+VAR T prep "including" pobj S
+VAR T nn S
+VAR N appos T
+VAR T dobj S
+# Possibly weak
+
+TRIGGER deviation
+VAR T prep "from" pobj S
+
+TRIGGER differential
+THN N amod T
+# might be a bit weak
+
+TRIGGER alteration
+VAR T prep "of" pobj S
+
+TRIGGER variance
+VAR T prep "in" pobj S
+
+TRIGGER oscillate
+VAR T nsubj S
+

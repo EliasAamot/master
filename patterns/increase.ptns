@@ -1,0 +1,263 @@
+TRIGGER surplus 
+VAR T nn S
+
+#TRIGGER dissolution
+#VAR T prep "of" pobj S
+# There are several cases where "dissolution of POBJ" is a variable in the annotated data...
+#VAR T nn S
+
+TRIGGER stimulation
+VAR T prep "in" pobj S
+VAR X dobj T ; X prep "in" pobj S
+# X = counteracted; Needed due to a common parse error
+VAR T prep "of" pobj S
+
+TRIGGER produce
+VAR T nsubj "much" prep "of" pobj S
+# Oddly specific
+VAR N vmod T
+# Not attested due to error in parsing of sentence where this pattern should match.
+
+TRIGGER drawdown
+VAR T prep "of" pobj S
+
+TRIGGER highest
+VAR T nsubj S
+# Possibly weak
+VAR N amod T
+
+TRIGGER presence
+VAR T prep "of" pobj S
+# Possibly weak
+
+TRIGGER enriched
+VAR X amod T ; X nn S
+VAR T prep "with" pobj S
+
+TRIGGER increase
+VAR T iobj S
+# Probably due to parsing error
+VAR T dobj S
+VAR T prep "in" pobj S
+VAR T prep "of" pobj S
+VAR T prep "by" pobj S
+VAR T advmod S
+VAR T nsubjpass S
+VAR N amod T
+VAR N dep T
+VAR N vmod T
+VAR T nn S
+VAR T nsubj S 
+# This might be a dangerous patterns, but less so than feared
+VAR X dobj T ; X prep "in" pobj S
+# X = found
+VAR X prep "with" pobj T ; X prep "in" pobj S
+VAR X xcomp T aux "to" ; X nsubj S
+# X = continue
+VAR  X xcomp T aux "to" ; X nsubjpass S
+# X = projected
+
+TRIGGER activation
+THN T nn S
+# Does not occur due to a wrong parse, so not entirely sure if this is correct
+
+TRIGGER intensify
+VAR T dobj S 
+VAR T nsubjpass S
+
+TRIGGER induce
+THN T nsubjpass S
+
+TRIGGER heighten
+VAR T dobj S
+VAR N amod T
+
+#TRIGGER large
+#VAR N amod T 
+# Very weak, 2 POSEX, 18 NEGEX
+
+TRIGGER accumulation
+VAR T nn S
+
+TRIGGER build-up
+VAR N dobj T
+
+TRIGGER enhance
+VAR N amod T
+VAR T dobj S
+VAR T nsubjpass S
+VAR T prep "both" pobj S
+# Hack required by the treatment of "both". Probably needed elsewhere as well.
+VAR T dep S 
+# Evident in data, but due to weak parsing
+
+TRIGGER generation
+THN T prep "of" pobj S
+
+TRIGGER strongest
+VAR N ccomp T
+
+TRIGGER towards
+VAR "from" pobj X prep T pobj S
+
+TRIGGER enhancement
+VAR T prep "of" pobj S
+# 1 case Var 1 case THN
+
+TRIGGER abundant
+THN T advmod "more" ; T advmod S
+
+TRIGGER up-regulate
+THN T nsubjpass S
+THN N vmod T
+THN N rcmod X dep T
+# X = "found"
+THN T dobj S
+
+TRIGGER favour
+VAR T dobj S
+
+#TRIGGER new
+#VAR N amod T
+# Very weak
+
+#TRIGGER induction
+#THN T prep "of" pobj S
+# Slightly weak
+
+TRIGGER intense
+THN T advmod "more" ; N amod T
+
+#TRIGGER deposition
+#VAR T nn S
+# Very weak
+
+TRIGGER formation
+VAR T prep "of" pobj S
+# Slightly weak 2 : 1
+
+#TRIGGER generate
+#THN T dobj S
+# Very Weak 1 : 2
+
+#TRIGGER supply
+#VAR T dobj S
+# Kind of weak, about 50/50
+
+TRIGGER rise
+VAR N nn T
+
+TRIGGER additional
+#VAR N amod T
+# Very weeak
+#VAR X amod T ; X nn S
+# Also weak 
+
+TRIGGER addition
+VAR T prep "of" pobj S
+
+TRIGGER enrichemnt
+VAR T prep "in" pobj S
+
+TRIGGER tighter
+VAR N amod T
+
+TRIGGER more
+VAR N amod T
+# Seems fair, as most "more" triggers that are false use advmod etc
+
+TRIGGER form
+VAR T nsubjpass S
+
+TRIGGER efficient
+VAR N amod T advmod "more"
+#; ! N nsubj X
+# Can be made stronger by pruning away cases where the N has a nsubj
+# Currently weak
+
+TRIGGER up-regulation
+THN T prep "of" pobj S
+
+TRIGGER improve
+VAR T nsubjpass S
+
+TRIGGER heighten
+VAR T dobj S
+VAR N amod T
+
+TRIGGER ballast
+THN T dobj S
+# Slightly weak; works 50-50
+
+TRIGGER bloom
+VAR X amod T ; X prep "of" pobj S
+VAR T nn S
+# Slightly weak
+
+TRIGGER fresher
+THN N amod T
+# Slightly pointless
+
+TRIGGER regenerated
+VAR T dobj S
+# Based on human judgement, since parse output is insufficient. Might be too weak
+VAR T advmod S
+# Ditto. Probably not too weak, but possibly pointless.
+
+TRIGGER contribute
+VAR T prep "to" pcomp "shaping" dobj S
+VAR T prep "to" pobj S
+
+TRIGGER high
+VAR N amod T
+VAR T nsubj S
+
+TRIGGER amendment
+VAR T nn S
+
+TRIGGER stimulate
+THN T dobj S
+VAR N amod T
+VAR T nsubjpass S
+
+TRIGGER acidify
+THN N amod T dep "more"
+
+TRIGGER elevated
+VAR N amod T
+
+TRIGGER lengthening
+VAR T prep "of" pobj S
+
+TRIGGER higher
+VAR N amod T
+VAR "than" dep T ; "than" dep S
+VAR T nsubj S
+VAR X advmod T ; X nsubjpass S
+
+TRIGGER upward
+VAR "trend" amod T ; "trend" prep "of" pobj S
+
+TRIGGER grow
+VAR T nsubj S
+
+TRIGGER replete
+VAR X nn T ; X nn S
+# Postulated from correctly parsed data
+
+TRIGGER faster
+VAR N amod T
+
+TRIGGER stronger
+VAR N amod T
+VAR T advmod S
+
+TRIGGER greatest
+VAR N amod T
+
+TRIGGER enrichment
+VAR T nn S
+VAR T prep "in" pobj S
+THN T prep "of" pobj S
+VAR T appos S
+# Probably due to mis-parse

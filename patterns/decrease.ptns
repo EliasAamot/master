@@ -1,0 +1,172 @@
+TRIGGER slow
+#VAR T prt "down" ; T dobj S 
+# Slow down is subsumed by the rule below, which holds 100% in the data
+VAR T dobj S
+
+TRIGGER limit
+VAR T dobj S
+# Weak in a strange way; not stricktly too weak, but objects tend to be uninteresting. Wil try to keep them in
+
+TRIGGER weaker
+VAR T nsubj S
+
+TRIGGER slower
+VAR N amod T
+
+TRIGGER decline
+VAR T nsubj S
+VAR T prep "in" pobj S
+VAR X prep "to" pobj T ; X advcl S mark "in"
+# X = led
+
+TRIGGER dissolution
+VAR T prep "of" pobj S
+VAR T nn S
+# Not directly attested in the data, but a plausible pattern based on an unannotated structure
+
+TRIGGER reduce
+VAR T dobj S
+VAR T nsubjpass S
+VAR N amod T
+VAR  X xcomp T ; X nsubj S
+
+TRIGGER restrict
+VAR T dobj X nn S
+# Based on the sentence "restrict this possible [CO215 fertilization] effect",
+# which is at best not destructive.
+
+TRIGGER smaller
+THN N amod T
+THN T nsubj S
+# Both rules are borderline weak
+
+TRIGGER decrease
+VAR T prep "in" pobj S
+VAR T prep "of" pobj S
+VAR T nn S
+VAR T dobj S
+VAR T nsubjpass S
+VAR T nsubj S
+VAR N vmod T
+VAR N amod T
+
+TRIGGER deplete
+VAR T dobj S
+VAR T nsubjpass S
+
+TRIGGER negative
+VAR T dep "more" ; T dep S
+
+TRIGGER scarce
+VAR N amod T
+
+TRIGGER counteract
+VAR T dobj S
+# Slightly weak. One one of five examples are true matches, but most false positives are acceptable.
+
+TRIGGER from
+VAR T pobj S prep "towards"
+
+TRIGGER down-regulate
+THN T nsubjpass S
+THN N rcmod "found" dep T
+THN N vmod T
+
+TRIGGER depletion
+VAR T prep "of" pobj S
+VAR T nn S
+
+TRIGGER reduction
+VAR T prep "of" pobj S
+VAR T prep "in" pobj S
+VAR N amod T
+VAR T dobj S
+
+TRIGGER low
+VAR N amod T
+VAR T nsubj S
+
+TRIGGER weakening
+VAR T prep "of" pobj S
+
+TRIGGER shallower
+THN N amod T
+
+TRIGGER disaggregation
+THN T prep "of" pobj S
+
+TRIGGER dissipate
+VAR T dobj S
+
+TRIGGER lower
+VAR N amod T
+VAR T dobj S
+VAR T nsubj S
+
+TRIGGER down-regulation
+THN T prep "of" pobj S
+THN X nsubjpass T ; X prep "for" pobj S
+THN X nsubjpass T ; X prep "of" pobj S
+
+TRIGGER attenuation
+VAR T nn S
+VAR X nn T ; X nn S
+
+TRIGGER sink
+THN T nsubj S
+# Slightly weak
+
+TRIGGER degradation
+VAR T prep "of" pobj S
+VAR T nn S
+
+TRIGGER lowered
+VAR N amod T
+VAR T dep S
+
+TRIGGER efficient
+VAR T advmod "less" ; T nsubj S
+
+TRIGGER degraded
+THN T advmod "less" ; T nsubj S
+
+TRIGGER mitigate
+VAR T dobj S
+
+TRIGGER diminution
+VAR T prep "of" pobj S
+
+TRIGGER impaired
+VAR N amod T
+
+TRIGGER loss
+VAR X prep "to" pobj T ; X prep "in" pobj S
+VAR T prep "of" pobj S
+
+#TRIGGER limitation
+#VAR T nn S
+# While useful someplaces, and never directly wrong, this is not the way we want to handle limitation
+
+TRIGGER drop
+VAR T prep "of" pobj S
+# Not attested due to errors in parsing
+
+TRIGGER effect
+VAR T amod "negative" ; T prep "on" pobj S
+
+TRIGGER diminish
+VAR T ccomp S
+VAR T dobj S
+# Not attested due to missing annotation
+
+TRIGGER remove
+VAR T dobj S
+
+TRIGGER lesser
+VAR N amod T
+
+TRIGGER inhibition
+THN T prep "of" pobj S
+
+TRIGGER downscale
+VAR N dep T

@@ -1,0 +1,22 @@
+TRIGGER constant
+VAR X dobj Y amod T ; X nsubj S
+VAR T nsubj S
+#VAR TS
+# TS is a new thing, needs to be implemented
+# However way too weak
+VAR N amod T
+# Constant in any form is quite weak
+
+TRIGGER unchanged
+VAR T nsubj S
+
+TRIGGER stability
+VAR T prep "of" pobj S
+
+TRIGGER unaffected
+VAR T csubj X dobj S
+# Appears to be due to a bad parse
+VAR T nsubj S
+
+TRIGGER unaltered
+VAR N amod T
