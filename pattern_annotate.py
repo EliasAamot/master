@@ -746,7 +746,6 @@ def detect_cause_correlation(paper_text, pattern_base, annotator):
 
                 if full_match:
                     # Store the annotation
-                    print lbi
                     
                     # Trigger
                     trigger_id = "T"+str(annotator.get_next_T())

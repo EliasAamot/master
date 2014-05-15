@@ -10,10 +10,10 @@ colour_map = {"Variable":"deeppink",
               "Change":"green3",
               "Increase":"salmon",
               "Decrease":"turquoise",
-              "Correlate":"gray",
+              "Correlate":"green",
               "Negative_Correlate":"gray",
               "Positive_Correlate":"gray",
-              "Cause":"gray",
+              "Cause":"blue",
               "And":"green",
               "Or":"green",
               "RefExp":"gray"}
@@ -30,7 +30,7 @@ def get_colour(start, end, anns):
     return colour
 
 if __name__=="__main__":
-    letsfind = ['highest']    
+    letsfind = ['increase']    
 
     files = ["NParses/" + filename for filename in os.listdir("NParses")]
     
