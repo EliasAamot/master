@@ -66,10 +66,12 @@ def extract_abstracts():
     if not os.path.isdir(filefolder):
         os.mkdir(filefolder)
     
-    existing_abstracts = set([filename[:-4] for filename in os.listdir(os.join(os.getcwd(), filefolder))])
+    existing_abstracts = set([filename[:-4] for filename in os.listdir(os.path.join(os.getcwd(), filefolder))])
     for filename in os.listdir(os.path.join(os.getcwd(), raw_folder)):
+	if filename[-3:] == ".cnt" or filename[:-4] in existing_abstracts:
+	    continue
         if not filename[:-4] in existing_abstracts:
-            with open(os.path.join(raw_folder, filename+".xml"), 'r') as filen:
+            with open(os.path.join(raw_folder, filename+".txt"), 'r') as filen:
                 xml = json.loads(filen)
                 abstract = xml['abstract']
             with open(os.path.join(filefolder, filename+".txt"), 'w') as filen:
