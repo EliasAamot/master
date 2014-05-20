@@ -6,7 +6,7 @@ Script to run Stanford Parsers in concurrently.
 """
 import multiprocessing
 import os, subprocess
-import time, json
+import time, json, codecs
 
 outfolder = "Parses"
 coreNLPpath = "/home/elias/tmp/master/sfcnlp"
@@ -32,8 +32,8 @@ def parse(filelist):
 
 def build_tmp_files():
     # Find all unparsed papers
-    already_parsed = set([filename[:-4] for filename in os.listdir(os.join(os.getcwd(), outfolder))])
-    filenames = [os.path.join(filefolder, filename+".txt") for filename in os.listdir(os.join(os.getcwd(), filefolder)) if not filename[:-4] in already_parsed]
+    already_parsed = set([filename[:-4] for filename in os.listdir(os.path.join(os.getcwd(), outfolder))])
+    filenames = [os.path.join(filefolder, filename+".txt") for filename in os.listdir(os.path.join(os.getcwd(), filefolder)) if not filename[:-4] in already_parsed]
 
     # Split them into $number_of_processes partitions of similar size
     partitions = []    
@@ -68,20 +68,24 @@ def extract_abstracts():
     
     existing_abstracts = set([filename[:-4] for filename in os.listdir(os.path.join(os.getcwd(), filefolder))])
     for filename in os.listdir(os.path.join(os.getcwd(), raw_folder)):
-	if filename[-3:] == ".cnt" or filename[:-4] in existing_abstracts:
+	if filename[-3:] == "cnt" or filename[:-4] in existing_abstracts:
 	    continue
         if not filename[:-4] in existing_abstracts:
-            with open(os.path.join(raw_folder, filename+".txt"), 'r') as filen:
-                xml = json.loads(filen)
-                abstract = xml['abstract']
-            with open(os.path.join(filefolder, filename+".txt"), 'w') as filen:
-                filen.write(abstract)
+            with open(os.path.join(raw_folder, filename), 'r') as filen:
+		try:
+                    xml = json.loads(filen.read())
+                    abstract = xml['abstract']
+		except:
+		    print "error!"
+		    continue
+            filen = codecs.open(os.path.join(filefolder, filename), 'w', 'utf-8')
+            filen.write(unicode(abstract))
     
 if __name__ == "__main__":
     extract_abstracts()    
     build_tmp_files()
     
-#    print "Starting parsing at " + time.strftime("%c")
-#    pool = multiprocessing.Pool(processes=number_of_processes)
-#    for i in xrange(number_of_processes):
-#        parse(os.path.join("tmp", "tmpfile"+str(i)))
+    print "Starting parsing at " + time.strftime("%c")
+    pool = multiprocessing.Pool(processes=number_of_processes)
+    for i in xrange(number_of_processes):
+        parse(os.path.join("tmp", "tmpfile"+str(i)))
