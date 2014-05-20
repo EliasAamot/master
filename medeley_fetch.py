@@ -124,7 +124,8 @@ def get_abstract_for_id(theid, access_token):
         if 'abstract' in xml_dict.keys():
             return xml_dict['abstract']
         else:
-            raise Exception('PaperHasNoAbstractException')
+	    pass
+            #raise Exception('PaperHasNoAbstractException')
     except AttributeError:
         print xml_dict
 
@@ -161,7 +162,7 @@ class Fetcher:
         xml = json.loads(response.read())
         
         self.access_token = xml['access_token']
-        self.access_expires = time.time() + (xml['expires_in']*1000) - 5000    
+        self.access_expires = time.time() + (int(xml['expires_in'])*1000) - 5000    
         # -5000 to ensure that the token does not expire even counting some delay
         
     def get_abstracts_for_id(self, theid):
