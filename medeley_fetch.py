@@ -6,13 +6,9 @@ Methods for gathering medline papers based keywords or ids.
 """
 from regex import *
 import urllib, urllib2, json
+import datetime
 
-#CONSUMER_KEY = "939b208ebeea32b816da61a1bce7de4605278cbae"
-#AUTH = "/?consumer_key=" + CONSUMER_KEY
-
-#SEARCH_BASE_URL = "http://api.mendeley.com/oapi/documents/search/"
 SEARCH_BASE_URL = "https://api-oauth2.mendeley.com/oapi/documents/search/"
-#DETAIL_BASE_URL = "http://api.mendeley.com/oapi/documents/details/"
 DETAIL_BASE_URL = "https://api-oauth2.mendeley.com/oapi/documents/details/"
 
 MAX_PATH_LENGTH = 255
@@ -162,7 +158,7 @@ class Fetcher:
         xml = json.loads(response.read())
         
         self.access_token = xml['access_token']
-        self.access_expires = time.time() + (int(xml['expires_in'])*1000) - 5000    
+        self.access_expires = time.time() + (int(xml['expires_in'])) - 5    
         # -5000 to ensure that the token does not expire even counting some delay
         
     def get_abstracts_for_id(self, theid):
@@ -177,5 +173,3 @@ class Fetcher:
 
 if __name__=="__main__":
     pass
-
-    

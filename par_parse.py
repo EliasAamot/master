@@ -13,7 +13,7 @@ coreNLPpath = "/home/elias/tmp/master/sfcnlp"
 filefolder = "Abstracts"
 raw_folder = "Data"
 
-number_of_processes = 12
+number_of_processes = 24
     
 def parse(filelist):
     # Run CoreNLP on list of files
@@ -88,4 +88,4 @@ if __name__ == "__main__":
     print "Starting parsing at " + time.strftime("%c")
     pool = multiprocessing.Pool(processes=number_of_processes)
     for i in xrange(number_of_processes):
-        parse(os.path.join("tmp", "tmpfile"+str(i)))
+        pool.apply_async(parse, [os.path.join("tmp", "tmpfile"+str(i))])
