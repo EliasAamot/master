@@ -58,6 +58,16 @@ def get_count_for_keyword(keyword, access_token):
         with open(path, 'w') as file:
             file.write(str(count) + "\n")
     return count
+
+def get_ids_for_keyword_and_year(keyword, year, access_token):
+    keyword_path = path_normalize(keyword)
+    path = 'IDs'+keyword_path+str(year)+".ids"
+    path = fix_length(path)
+    try:
+        with open(path, 'r') as file:
+            ids = [line.strip() for line in file]
+    except IOError:
+        print "Downloading " + keyword + " " + str(year)
         
 def get_ids_for_keyword(keyword, access_token):
     keyword_path = path_normalize(keyword)
