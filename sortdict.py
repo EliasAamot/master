@@ -33,7 +33,10 @@ class SortDict():
         tuples = [(key, self.dict[key])for key in self.dict.iterkeys()]
         tuples = sorted(tuples, key=itemgetter(1), reverse=True)[start:stop]
         return [key for key, value in tuples]  
-        
+    
+    def iteritems(self):
+        return self.dict.iteritems()
+    
     def iterkeys(self):
         return self.dict.iterkeys()
     

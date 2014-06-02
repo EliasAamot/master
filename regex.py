@@ -44,7 +44,7 @@ def path_normalize(word):
     
 def np_normalize(np):
     np = np.lower().strip()
-    np = re.sub("[^ a-z+]", "", np)
+    np = re.sub("[^ \-a-z+]", "", np)
     np = re.sub(" [ ]+", " ", np)
     np= np.strip()
     return np

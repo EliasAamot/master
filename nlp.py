@@ -87,22 +87,27 @@ class TreeManipulator:
     """
         A collection of methods for manipulation and extraction from NLTK trees.
     """    
-    
-    def get_all_np_variations(self, tree=None):
+    @staticmethod
+    def get_all_np_variations(tree=None):
         # Returns a list of all NP variations found in the sentece parse tree
-        nps = self.extract_all(tree=tree, label='NP')
+        nps = TreeManipulator.extract_all(tree=tree, label='NP')
         all_nps = set()
         for np in nps:
-            all_nps.add(self.get_string(np))
-            all_nps.add(self.get_string(self.prune_tree(np, ['DT'])))
-            all_nps.add(self.get_string(self.prune_tree(np, ['DT', 'JJ'])))
+            all_nps.add(TreeManipulator.get_string(np))
+            all_nps.add(TreeManipulator.get_string(TreeManipulator.prune_tree(np, ['DT'])))
+            all_nps.add(TreeManipulator.get_string(TreeManipulator.prune_tree(np, ['JJ'])))
+            all_nps.add(TreeManipulator.get_string(TreeManipulator.prune_tree(np, ['PRP', 'PRP$'])))
+            all_nps.add(TreeManipulator.get_string(TreeManipulator.prune_tree(np, ['PRP', 'PRP$', 'JJ'])))
+            all_nps.add(TreeManipulator.get_string(TreeManipulator.prune_tree(np, ['DT', 'JJ'])))
         return all_nps
-        
-    def extract_all(self, tree=None, label=''):
+    
+    @staticmethod
+    def extract_all(tree=None, label=''):
         # Extracts all subtrees with a given label from a tree
         return [subtree for subtree in tree.subtrees() if subtree.node==label]
     
-    def prune_tree(self, tree=None, labels=[]):
+    @staticmethod
+    def prune_tree(tree=None, labels=[]):
         # Prunes away all children with one of the given labels.
         pruned_tree = tree.copy(deep=True)
         for i, child in enumerate(pruned_tree):
@@ -110,10 +115,11 @@ class TreeManipulator:
                 pruned_tree.pop(i)
         return pruned_tree
         
-    def get_string(self, tree=None):
+    @staticmethod
+    def get_string(tree=None):
         # Returns the normalized (lower-case) and stemmed string of the leaves of the tree
         words = [word for word in tree.leaves() if not word in ["-LRB-", "-RRB-"]]
-        return regex.np_normalize(' '.join(words))
+        return ' '.join(words) #regex.np_normalize(' '.join(words))
         
 class Stemmer:
     """
