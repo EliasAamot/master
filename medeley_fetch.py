@@ -58,39 +58,6 @@ def get_count_for_keyword(keyword, access_token):
         with open(path, 'w') as file:
             file.write(str(count) + "\n")
     return count
-        
-def get_ids_for_keyword(keyword, access_token):
-    keyword_path = path_normalize(keyword)
-    path = 'IDs/'+keyword_path+'.ids'
-    path = fix_length(path)
-    try: 
-        with open(path, 'r') as file:
-            ids = [line.strip() for line in file]
-    except IOError:
-        print "Downloading " + keyword
-        ids = []
-        done = False
-        current_page = 0
-        while not done:
-            try:
-                search_query = urllib2.quote('"'+keyword+'"') 
-                url = SEARCH_BASE_URL + search_query + get_auth_string(access_token) + "&page=" + str(current_page) + "&items=100"
-                xml_dict = json.loads(urllib2.urlopen(url).read())
-                ids.extend([document['uuid'] for document in xml_dict['documents']])                
-                current_page += 1
-                print str(current_page) + "/" + str(xml_dict['total_pages'])
-                if current_page > int(xml_dict['total_pages']):
-                    done = True
-            except Exception as e:
-                if '429' in str(e):
-                    print "HTTP Error 429: Too many requests. Try again in one hour or more."
-                    return None
-                else:
-                    print "Exception " + str(e) + " occured while downloading paper " + keyword + ". Trying again."
-        with open(path, 'w') as file:
-            for id in ids:
-                file.write(id + "\n")
-    return ids
 
 def get_abstract_for_id(theid, access_token):
     path = 'Data/'+theid+'.txt'
@@ -197,7 +164,38 @@ class Fetcher:
         return get_abstract_for_id(theid, self.get_access_token())
         
     def get_ids_for_keyword(self, keyword):
-        return get_ids_for_keyword(keyword, self.get_long_access_token())
+        keyword_path = path_normalize(keyword)
+        path = 'IDs/'+keyword_path+'.ids'
+        path = fix_length(path)
+        try: 
+            with open(path, 'r') as file:
+                ids = [line.strip() for line in file]
+        except IOError:
+            print "Downloading " + keyword
+            ids = []
+            done = False
+            current_page = 0
+            while not done:
+                try:
+                    search_query = urllib2.quote('"'+keyword+'"') 
+                    access_token = self.get_access_token()
+                    url = SEARCH_BASE_URL + search_query + get_auth_string(access_token) + "&page=" + str(current_page) + "&items=100"
+                    xml_dict = json.loads(urllib2.urlopen(url).read())
+                    ids.extend([document['uuid'] for document in xml_dict['documents']])                
+                    current_page += 1
+                    print str(current_page) + "/" + str(xml_dict['total_pages'])
+                    if current_page > int(xml_dict['total_pages']):
+                        done = True
+                except Exception as e:
+                    if '429' in str(e):
+                        print "HTTP Error 429: Too many requests. Waiting 10 minutes, then trying again."
+                        sleep(600)
+                    else:
+                        print "Exception " + str(e) + " occured while downloading paper " + keyword + ". Trying again."
+            with open(path, 'w') as file:
+                for id in ids:
+                    file.write(id + "\n")
+        return ids
         
     def get_count_for_keyword(self, keyword):
         return get_count_for_keyword(keyword, self.get_access_token())
