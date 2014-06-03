@@ -6,7 +6,7 @@ Methods for gathering medline papers based keywords or ids.
 """
 from regex import *
 import urllib, urllib2, json
-import datetime
+import time
 
 SEARCH_BASE_URL = "https://api-oauth2.mendeley.com/oapi/documents/search/"
 DETAIL_BASE_URL = "https://api-oauth2.mendeley.com/oapi/documents/details/"
@@ -120,12 +120,44 @@ def get_abstract_for_id(theid, access_token):
         if 'abstract' in xml_dict.keys():
             return xml_dict['abstract']
         else:
-	    pass
+            pass
             #raise Exception('PaperHasNoAbstractException')
     except AttributeError:
         print xml_dict
 
-import time
+def get_year_for_id(theid, access_token):
+    path = 'Data/'+theid+'.txt'
+    try: 
+        with open(path, 'r') as file:
+            xml = file.read()
+    except IOError:
+        print "Downloading " + str(theid)
+        fetched = False
+        while not fetched:
+            try:
+                search_query = theid
+                url = DETAIL_BASE_URL + search_query + get_auth_string(access_token)
+                xml = urllib2.urlopen(url).read()
+                time.sleep(8)
+                fetched = True
+            except Exception as e:
+                if '429' in str(e):
+                    print "HTTP Error 429: Too many requests. Try again in one hour or more."
+                    raise Exception('TooManyRequestsException')
+                else:
+                    print "Unknown exception " + str(e) + " occured while downloading paper " + theid + ". Trying again."
+    with open(path, 'w') as file:
+        file.write(xml)
+    xml_dict = json.loads(xml)
+    try:
+        if 'year' in xml_dict.keys():
+            return int(xml_dict['year'])
+        else:
+            pass
+            #raise Exception('PaperHasNoAbstractException')
+    except AttributeError:
+        print xml_dict
+
 
 class Fetcher:
     """
@@ -169,6 +201,9 @@ class Fetcher:
         
     def get_count_for_keyword(self, keyword):
         return get_count_for_keyword(keyword, self.get_access_token())
+        
+    def get_year_for_id(self, theid):
+        return get_year_for_id(theid, self.get_access_token())
                 
 
 if __name__=="__main__":
