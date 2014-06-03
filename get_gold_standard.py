@@ -4,7 +4,7 @@ Created on Fri May 23 10:53:28 2014
 
 @author: elias
 """
-import regex
+import regex, codecs
 import json, os
 import medeley_fetch
 import extract_nps
@@ -54,6 +54,18 @@ if __name__=="__main__":
             np, count = line.strip().split("\t")
             before_nps.add(np)
     
-    print len(after_nps)
-    print len(before_nps)
-    print len(after_nps.difference(before_nps))
+    with codecs.open("tmp/after.nps", mode='w', encoding='utf-8') as fil:
+        for np in after_nps:
+            fil.write(unicode(np + "\n", 'utf-8'))
+            
+    with codecs.open("tmp/before.nps", mode='w', encoding='utf-8') as fil:
+        for np in before_nps:
+            fil.write(unicode(np + "\n", 'utf-8'))
+            
+    with codecs.open("tmp/diff.nps", mode='w', encoding='utf-8') as fil:
+        for np in after_nps.difference(before_nps):
+            fil.write(unicode(np + "\n", 'utf-8'))
+            
+    with codecs.open("tmp/inter.nps", mode='w', encoding='utf-8') as fil:
+        for np in after_nps.intersection(before_nps):
+            fil.write(unicode(np + "\n", 'utf-8'))
