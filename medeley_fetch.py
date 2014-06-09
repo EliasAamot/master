@@ -72,12 +72,11 @@ def get_abstract_for_id(theid, access_token):
                 search_query = theid
                 url = DETAIL_BASE_URL + search_query + get_auth_string(access_token)
                 xml = urllib2.urlopen(url).read()
-                time.sleep(8)
                 fetched = True
             except Exception as e:
                 if '429' in str(e):
-                    print "HTTP Error 429: Too many requests. Try again in one hour or more."
-                    raise Exception('TooManyRequestsException')
+                    print "HTTP Error 429: Too many requests. Trying again in 60 seconds."
+                    time.sleep(60)
                 else:
                     print "Unknown exception " + str(e) + " occured while downloading paper " + theid + ". Trying again."
     with open(path, 'w') as file:
