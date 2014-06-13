@@ -52,3 +52,6 @@ class SortDict():
     def join(self, other_dict):
         for key in other_dict.keys():
             self.dict[key] += int(other_dict[key])
+            
+    def __len__(self):
+        return len(self.dict)

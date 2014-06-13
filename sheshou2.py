@@ -5,10 +5,12 @@ An Arrowsmith-like LBKD system utilizing the Stanford Core NLP Toolkit and the M
 @author: elias
 """
 import medeley_fetch, sortdict, extract_nps
-import os, codecs, random
+import os, codecs, math
 from collections import defaultdict
 
 YEAR = 2009
+SAMPLE_SIZE = 500
+N = 100000000
 
 def query(keyword):
     print "Selecting papers containing the A-keywords..."
@@ -33,18 +35,33 @@ def query(keyword):
 
 def fetch_paper_ids(keyword):
     f = medeley_fetch.Fetcher()
-    ids = f.get_ids_for_keyword(keyword)
+    ids = set(f.get_ids_for_keyword(keyword))
     
-    id_sample = []
-    while len(id_sample) < 100 and len(ids):
-        check = random.choice(ids)
-        ids.remove(check)
+    # Find all papers that have already been parsed
+    parsed = set()
+    for _id in ids:
+        if os.path.exists("Parses/"+_id+".xml"):
+            parsed.add(_id)
+            
+    # Find which of the parsed papers are of the correct year
+    accepted_ids = set()
+    for _id in parsed:
+        year = f.get_year_for_id(_id)
+        if year <= YEAR:
+            accepted_ids.add(_id)
+            
+    # Now, keep adding in new papers until we have enough, or all papers have
+    # been considered
+    ids.difference_update(parsed)
+    while len(ids) and len(accepted_ids) < SAMPLE_SIZE:
+        check = ids.pop()
+        
         year = f.get_year_for_id(check)
         
         if year <= YEAR:
-            id_sample.append(check)
+            accepted_ids.add(check)
             
-    return id_sample
+    return accepted_ids
     
     
 def get_nps_from_papers(ids):
@@ -59,16 +76,16 @@ def get_nps_from_papers(ids):
 
         npps.append(nps)
     return npps
-    
+
 def mine_association_rules(npc):
     # Association Rule Collection is a map from itemset to support count
     support = defaultdict(int)
-    confidence = defaultdict(int)
+    confidence = sortdict.SortDict()
     
     # Calculate the support for every NP, and remove those with less than average support
     for paper in npc:
         for np, count in paper.iteritems():
-            support[np] += 1
+            support[np] += int(count)
 
     avg_support = float(sum(support.values()))/float(len(support.values()))
 
@@ -78,7 +95,7 @@ def mine_association_rules(npc):
     f = medeley_fetch.Fetcher()
     for np in supported:
         try:
-            confidence[np] = float(support[np]) / float(f.get_count_for_keyword(np))
+            confidence[np] = float(support[np]) * math.log(N / float(f.get_count_for_keyword(np)))
         except ZeroDivisionError:
             # Can happen with some keywords that you cannot search with, such
             # as /
@@ -88,7 +105,12 @@ def mine_association_rules(npc):
 
     accepted = [np for np, conf in confidence.iteritems() if conf >= avg_confidence]
     
-    """ # For Logging
+    # logg
+    with codecs.open('b_set.txt', mode='w', encoding='utf-8') as fil:
+        for accept in accepted:
+            fil.write(accept + "\n")
+    
+    # For Logging
     with codecs.open('stats.txt', mode='w', encoding='utf-8') as fil:
         fil.write("Average support: "+str(avg_support)+"\n")
         fil.write("Average confidence: "+str(avg_confidence)+"\n")
@@ -107,8 +129,21 @@ def mine_association_rules(npc):
             else:
                 text += "\t" + "No"
             fil.write(text+"\n")
-    """
+
+    # Logg
+    with codecs.open('conf.txt', mode='w', encoding='utf-8') as fil:
+        for a in confidence[:]:
+            fil.write(a+"\n")
             
+    # count log
+    countae = sortdict.SortDict()
+    for np in accepted:
+        countae[np] = int(f.get_count_for_keyword(np))
+    with codecs.open('counts.txt', mode='w', encoding='utf-8') as fil:
+        for a in countae[:]:
+            fil.write(a+"\t"+str(countae[a])+"\n")
+            
+    exit()        
     return accepted
     
 if __name__=="__main__":

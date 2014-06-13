@@ -119,7 +119,7 @@ class TreeManipulator:
     def get_string(tree=None):
         # Returns the normalized (lower-case) and stemmed string of the leaves of the tree
         words = [word for word in tree.leaves() if not word in ["-LRB-", "-RRB-"]]
-        return ' '.join(words) #regex.np_normalize(' '.join(words))
+        return regex.np_normalize(' '.join(words))
         
 class Stemmer:
     """

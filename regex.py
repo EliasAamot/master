@@ -33,7 +33,7 @@ def find_abstract_texts(xml):
     
 def normalize(word):
     word = word.lower()
-    word = re.sub("[^a-z]", "", word)
+    word = re.sub("[^a-z ]", "", word)
     return word
     
 def path_normalize(word):
@@ -44,7 +44,7 @@ def path_normalize(word):
     
 def np_normalize(np):
     np = np.lower().strip()
-    np = re.sub("[^ \-a-z+]", "", np)
+    np = re.sub("[^ 0-9\-a-z+]", "", np)
     np = re.sub(" [ ]+", " ", np)
     np= np.strip()
     return np

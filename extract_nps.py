@@ -77,8 +77,7 @@ def extract_nps_single_paper(iid):
     
     if not os.path.exists(os.path.join("Parses", iid+".xml")):
         parse_abstract(iid)
-    
-    
+     
     xml = ET.parse(os.path.join("Parses", iid+".xml"))
     np_tally = tally_xml(xml)
     

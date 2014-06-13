@@ -40,7 +40,7 @@ def get_count_for_keyword(keyword, access_token):
         done = False
         while not done:
             try:
-                search_query = urllib2.quote("title:"+keyword) 
+                search_query = urllib2.quote("title:"+normalize(keyword)) 
                 url = SEARCH_BASE_URL + search_query + get_auth_string(access_token)
                 print url
                 xml_dict = json.loads(urllib2.urlopen(url).read())
@@ -55,6 +55,7 @@ def get_count_for_keyword(keyword, access_token):
                     return None
                 else:
                     print "Exception " + str(e) + " occured while downloading paper " + keyword + ". Trying again."
+                    time.sleep(5)
         with open(path, 'w') as file:
             file.write(str(count) + "\n")
     return count
